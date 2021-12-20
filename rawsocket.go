@@ -40,7 +40,7 @@ func htons(v uint16) int {
 }
 func htons16(v uint16) uint16 { return v<<8 | v>>8 }
 
-func listen(iface string, responder chan *NDRequest) {
+func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
@@ -68,23 +68,45 @@ func listen(iface string, responder chan *NDRequest) {
 		fmt.Println(err.Error())
 	}
 
-	var f Filter = []bpf.Instruction{
-		// Load "EtherType" field from the ethernet header.
-		bpf.LoadAbsolute{Off: 12, Size: 2},
-		// Jump to the drop packet instruction if EtherType is not IPv6.
-		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 4},
-		// Load "Next Header" field from IPV6 header.
-		bpf.LoadAbsolute{Off: 20, Size: 1},
-		// Jump to the drop packet instruction if Next Header is not ICMPv6.
-		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 2},
-		// Load "Type" field from ICMPv6 header.
-		bpf.LoadAbsolute{Off: 54, Size: 1},
-		// Jump to the drop packet instruction if Type is not Neighbor Solicitation.
-		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x87, SkipTrue: 1},
-		// Verdict is "send up to 4k of the packet to userspace."
-		bpf.RetConstant{Val: 4096},
-		// Verdict is "ignore packet."
-		bpf.RetConstant{Val: 0},
+	var f Filter
+	if requestType == NDP_SOL {
+		f = []bpf.Instruction{
+			// Load "EtherType" field from the ethernet header.
+			bpf.LoadAbsolute{Off: 12, Size: 2},
+			// Jump to the drop packet instruction if EtherType is not IPv6.
+			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 4},
+			// Load "Next Header" field from IPV6 header.
+			bpf.LoadAbsolute{Off: 20, Size: 1},
+			// Jump to the drop packet instruction if Next Header is not ICMPv6.
+			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 2},
+			// Load "Type" field from ICMPv6 header.
+			bpf.LoadAbsolute{Off: 54, Size: 1},
+			// Jump to the drop packet instruction if Type is not Neighbor Solicitation.
+			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x87, SkipTrue: 1},
+			// Verdict is "send up to 4k of the packet to userspace."
+			bpf.RetConstant{Val: 4096},
+			// Verdict is "ignore packet."
+			bpf.RetConstant{Val: 0},
+		}
+	} else {
+		f = []bpf.Instruction{
+			// Load "EtherType" field from the ethernet header.
+			bpf.LoadAbsolute{Off: 12, Size: 2},
+			// Jump to the drop packet instruction if EtherType is not IPv6.
+			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 4},
+			// Load "Next Header" field from IPV6 header.
+			bpf.LoadAbsolute{Off: 20, Size: 1},
+			// Jump to the drop packet instruction if Next Header is not ICMPv6.
+			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 2},
+			// Load "Type" field from ICMPv6 header.
+			bpf.LoadAbsolute{Off: 54, Size: 1},
+			// Jump to the drop packet instruction if Type is not Neighbor Advertisement.
+			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x88, SkipTrue: 1},
+			// Verdict is "send up to 4k of the packet to userspace."
+			bpf.RetConstant{Val: 4096},
+			// Verdict is "ignore packet."
+			bpf.RetConstant{Val: 0},
+		}
 	}
 
 	err = f.ApplyTo(fd)
@@ -106,9 +128,10 @@ func listen(iface string, responder chan *NDRequest) {
 		fmt.Printf("% X\n", buf[:numRead][80:86])
 		fmt.Println()
 		responder <- &NDRequest{
+			requestType:    requestType,
 			srcIP:          buf[:numRead][22:38],
 			answeringForIP: buf[:numRead][62:78],
-			mac:            niface.HardwareAddr,
+			mac:            buf[:numRead][80:86],
 		}
 	}
 }

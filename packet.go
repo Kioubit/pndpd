@@ -55,28 +55,39 @@ func (h *IPv6Header) constructPacket() []byte {
 	return final
 }
 
-type NDPAdvPayload struct {
+type NdpPayload struct {
+	packetType     NDPType
 	answeringForIP []byte
 	mac            []byte
 }
 
-func newNdpPacket(answeringForIP []byte, mac []byte) *NDPAdvPayload {
-	return &NDPAdvPayload{
+func newNdpPacket(answeringForIP []byte, mac []byte, packetType NDPType) *NdpPayload {
+	return &NdpPayload{
+		packetType:     packetType,
 		answeringForIP: answeringForIP,
 		mac:            mac,
 	}
 }
 
-func (p *NDPAdvPayload) constructPacket() ([]byte, int) {
+func (p *NdpPayload) constructPacket() ([]byte, int) {
+	var protocol byte
+	var flags byte
+	if p.packetType == NDP_SOL {
+		protocol = 0x87
+		flags = 0x0
+	} else {
+		protocol = 0x88
+		flags = 0x60
+	}
 	header := []byte{
-		0x88, // Type: Neighbor Advertisement
-		0x0,  // Code
-		0x0,  // Checksum filled in later
-		0x0,  // Checksum filled in later
-		0x60, // Flags (Solicited,Override)
-		0x0,  // Reserved
-		0x0,  // Reserved
-		0x0,  // Reserved
+		protocol, // Type: NDPType
+		0x0,      // Code
+		0x0,      // Checksum filled in later
+		0x0,      // Checksum filled in later
+		flags,    // Flags (Solicited,Override)
+		0x0,      // Reserved
+		0x0,      // Reserved
+		0x0,      // Reserved
 	}
 	if len(p.answeringForIP) != 16 {
 		panic("malformed IP")
