@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -27,8 +29,14 @@ func simpleRespond(iface string) {
 	defer close(requests)
 	go respond(iface, requests, NDP_ADV)
 	go listen(iface, requests, NDP_SOL)
-	select {}
-	//TODO os.signal
+
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	select {
+	case <-sigCh:
+		fmt.Println("Exit")
+		os.Exit(0)
+	}
 }
 
 func proxy(iface1, iface2 string) {
@@ -52,7 +60,11 @@ func proxy(iface1, iface2 string) {
 	go listen(iface2, req_iface2_adv_iface1, NDP_ADV)
 	go respond(iface1, req_iface2_adv_iface1, NDP_ADV)
 
-	select {}
-	// TODO os.signal
-
+	sigCh := make(chan os.Signal)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	select {
+	case <-sigCh:
+		fmt.Println("Exit")
+		os.Exit(0)
+	}
 }

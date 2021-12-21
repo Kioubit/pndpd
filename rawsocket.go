@@ -50,7 +50,6 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 		Protocol: htons16(syscall.ETH_P_IPV6),
 		Ifindex:  niface.Index,
 	}
-	fmt.Println(niface.HardwareAddr)
 
 	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, htons(syscall.ETH_P_IPV6))
 	if err != nil {
@@ -65,7 +64,7 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 
 	err = syscall.Bind(fd, tiface)
 	if err != nil {
-		fmt.Println(err.Error())
+		panic(err.Error())
 	}
 
 	var f Filter
@@ -83,7 +82,7 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 			bpf.LoadAbsolute{Off: 54, Size: 1},
 			// Jump to the drop packet instruction if Type is not Neighbor Solicitation.
 			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x87, SkipTrue: 1},
-			// Verdict is "send up to 4k of the packet to userspace."
+			// Verdict is "send up to 4k of the packet to userspace."buf
 			bpf.RetConstant{Val: 4096},
 			// Verdict is "ignore packet."
 			bpf.RetConstant{Val: 0},
@@ -122,16 +121,21 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 		}
 		fmt.Println("Source IP:")
 		fmt.Printf("% X\n", buf[:numRead][22:38])
+		fmt.Println("Destination IP:")
+		fmt.Printf("% X\n", buf[:numRead][38:54])
 		fmt.Println("Requested IP:")
 		fmt.Printf("% X\n", buf[:numRead][62:78])
 		fmt.Println("Source MAC")
 		fmt.Printf("% X\n", buf[:numRead][80:86])
 		fmt.Println()
 		responder <- &NDRequest{
-			requestType:    requestType,
-			srcIP:          buf[:numRead][22:38],
-			answeringForIP: buf[:numRead][62:78],
-			mac:            buf[:numRead][80:86],
+			requestType:      requestType,
+			srcIP:            buf[:numRead][22:38],
+			dstIP:            buf[:numRead][38:54],
+			answeringForIP:   buf[:numRead][62:78],
+			mac:              buf[:numRead][80:86],
+			receivedIfaceMac: niface.HardwareAddr,
+			sourceIface:      iface,
 		}
 	}
 }

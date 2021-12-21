@@ -8,9 +8,11 @@ const (
 )
 
 type NDRequest struct {
-	requestType NDPType
-	//TODO use global unicast for router advertisements
-	srcIP          []byte
-	answeringForIP []byte
-	mac            []byte
+	requestType      NDPType
+	srcIP            []byte
+	answeringForIP   []byte
+	dstIP            []byte
+	mac              []byte
+	receivedIfaceMac []byte
+	sourceIface      string
 }

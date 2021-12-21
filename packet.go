@@ -2,6 +2,9 @@ package main
 
 import (
 	"encoding/binary"
+	"errors"
+	"net"
+	"strings"
 )
 
 var emptyIpv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -18,8 +21,11 @@ type IPv6Header struct {
 	payload    []byte
 }
 
-func newIpv6Header(srcIp []byte, dstIp []byte) *IPv6Header {
-	return &IPv6Header{dstIP: dstIp, srcIP: srcIp, protocol: 0x3a}
+func newIpv6Header(srcIp []byte, dstIp []byte) (*IPv6Header, error) {
+	if len(dstIp) != 16 || len(srcIp) != 16 {
+		return nil, errors.New("malformed IP")
+	}
+	return &IPv6Header{dstIP: dstIp, srcIP: srcIp, protocol: 0x3a}, nil
 }
 
 func (h *IPv6Header) addPayload(payload Payload) {
@@ -61,23 +67,29 @@ type NdpPayload struct {
 	mac            []byte
 }
 
-func newNdpPacket(answeringForIP []byte, mac []byte, packetType NDPType) *NdpPayload {
+func newNdpPacket(answeringForIP []byte, mac []byte, packetType NDPType) (*NdpPayload, error) {
+	if len(answeringForIP) != 16 || len(mac) != 6 {
+		return nil, errors.New("malformed IP")
+	}
 	return &NdpPayload{
 		packetType:     packetType,
 		answeringForIP: answeringForIP,
 		mac:            mac,
-	}
+	}, nil
 }
 
 func (p *NdpPayload) constructPacket() ([]byte, int) {
 	var protocol byte
 	var flags byte
+	var linkType byte
 	if p.packetType == NDP_SOL {
 		protocol = 0x87
 		flags = 0x0
+		linkType = 0x01
 	} else {
 		protocol = 0x88
 		flags = 0x60
+		linkType = 0x02
 	}
 	header := []byte{
 		protocol, // Type: NDPType
@@ -89,14 +101,11 @@ func (p *NdpPayload) constructPacket() ([]byte, int) {
 		0x0,      // Reserved
 		0x0,      // Reserved
 	}
-	if len(p.answeringForIP) != 16 {
-		panic("malformed IP")
-	} //TODO check IP lengths on assign everywhere
 	final := append(header, p.answeringForIP...)
 
 	secondHeader := []byte{
-		0x02, // Type: Target link-layer address (2)
-		0x01, // Length: 1 (8 bytes)
+		linkType, // Type
+		0x01,     // Length: 1 (8 bytes)
 	}
 	final = append(final, secondHeader...)
 
@@ -122,4 +131,9 @@ func checksumAddition(b []byte) uint32 {
 		}
 	}
 	return sum
+}
+
+func IsIPv6(ip string) bool {
+	rip := net.ParseIP(ip)
+	return rip != nil && strings.Contains(ip, ":")
 }
