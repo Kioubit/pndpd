@@ -119,15 +119,17 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Source IP:")
-		fmt.Printf("% X\n", buf[:numRead][22:38])
-		fmt.Println("Destination IP:")
-		fmt.Printf("% X\n", buf[:numRead][38:54])
-		fmt.Println("Requested IP:")
-		fmt.Printf("% X\n", buf[:numRead][62:78])
-		fmt.Println("Source MAC")
-		fmt.Printf("% X\n", buf[:numRead][80:86])
-		fmt.Println()
+		if GlobalDebug {
+			fmt.Println("Source IP:")
+			fmt.Printf("% X\n", buf[:numRead][22:38])
+			fmt.Println("Destination IP:")
+			fmt.Printf("% X\n", buf[:numRead][38:54])
+			fmt.Println("Requested IP:")
+			fmt.Printf("% X\n", buf[:numRead][62:78])
+			fmt.Println("Source MAC")
+			fmt.Printf("% X\n", buf[:numRead][80:86])
+			fmt.Println()
+		}
 		responder <- &NDRequest{
 			requestType:      requestType,
 			srcIP:            buf[:numRead][22:38],

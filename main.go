@@ -2,14 +2,12 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
-	fmt.Println("Usage: pndpd respond <interface>")
+	fmt.Println("Usage: pndpd readconfig <path to file>")
+	fmt.Println("Usage: pndpd respond <interface> <optional whitelist of CIDRs separated with a semicolon>")
 	fmt.Println("Usage: pndpd proxy <interface1> <interface2>")
 
 	if len(os.Args) <= 1 {
@@ -17,56 +15,18 @@ func main() {
 		os.Exit(1)
 	}
 	if os.Args[1] == "respond" {
-		simpleRespond(os.Args[2])
+		if len(os.Args) == 4 {
+			simpleRespond(os.Args[2], parseFilter(os.Args[3]))
+		} else {
+			simpleRespond(os.Args[2], nil)
+		}
 	}
 	if os.Args[1] == "proxy" {
 		proxy(os.Args[2], os.Args[3])
 	}
 
-}
-
-func simpleRespond(iface string) {
-	requests := make(chan *NDRequest, 100)
-	defer close(requests)
-	_, test, _ := net.ParseCIDR("fd44::/64")
-	go respond(iface, requests, NDP_ADV, []*net.IPNet{test})
-	go listen(iface, requests, NDP_SOL)
-
-	sigCh := make(chan os.Signal)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	select {
-	case <-sigCh:
-		fmt.Println("Exit")
-		os.Exit(0)
+	if os.Args[1] == "readConfig" {
+		readConfig(os.Args[2])
 	}
-}
 
-func proxy(iface1, iface2 string) {
-	req_iface1_sol_iface2 := make(chan *NDRequest, 100)
-	defer close(req_iface1_sol_iface2)
-	go listen(iface1, req_iface1_sol_iface2, NDP_SOL)
-	go respond(iface2, req_iface1_sol_iface2, NDP_SOL, nil)
-
-	req_iface2_sol_iface1 := make(chan *NDRequest, 100)
-	defer close(req_iface2_sol_iface1)
-	go listen(iface2, req_iface2_sol_iface1, NDP_SOL)
-	go respond(iface1, req_iface2_sol_iface1, NDP_SOL, nil)
-
-	req_iface1_adv_iface2 := make(chan *NDRequest, 100)
-	defer close(req_iface1_adv_iface2)
-	go listen(iface1, req_iface1_adv_iface2, NDP_ADV)
-	go respond(iface2, req_iface1_adv_iface2, NDP_ADV, nil)
-
-	req_iface2_adv_iface1 := make(chan *NDRequest, 100)
-	defer close(req_iface2_adv_iface1)
-	go listen(iface2, req_iface2_adv_iface1, NDP_ADV)
-	go respond(iface1, req_iface2_adv_iface1, NDP_ADV, nil)
-
-	sigCh := make(chan os.Signal)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	select {
-	case <-sigCh:
-		fmt.Println("Exit")
-		os.Exit(0)
-	}
 }

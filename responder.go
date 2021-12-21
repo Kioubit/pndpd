@@ -90,10 +90,10 @@ func pkt(ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType NDPTy
 		Port: 0,
 		Addr: t,
 	}
-	fmt.Println("Sending packet of type", respondType, "to")
-	fmt.Printf("% X\n", t)
-
-	fmt.Println(globalFd)
+	if GlobalDebug {
+		fmt.Println("Sending packet of type", respondType, "to")
+		fmt.Printf("% X\n", t)
+	}
 	err = syscall.Sendto(globalFd, response, 0, &d)
 	if err != nil {
 		fmt.Println(err.Error())
