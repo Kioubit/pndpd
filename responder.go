@@ -9,7 +9,7 @@ import (
 
 var globalFd int
 
-func respond(iface string, requests chan *NDRequest, respondType NDPType) {
+func respond(iface string, requests chan *NDRequest, respondType NDPType, filter []*net.IPNet) {
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
 		panic(err)
@@ -47,6 +47,20 @@ func respond(iface string, requests chan *NDRequest, respondType NDPType) {
 
 	for {
 		n := <-requests
+		if filter != nil {
+			ok := false
+			for _, i := range filter {
+				if i.Contains(n.answeringForIP) {
+					fmt.Println("filter allowed IP", n.answeringForIP)
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				continue
+			}
+		}
+
 		if n.sourceIface == iface {
 			pkt(result, n.srcIP, n.answeringForIP, niface.HardwareAddr, respondType)
 		} else {
@@ -79,6 +93,9 @@ func pkt(ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType NDPTy
 	fmt.Println("Sending packet of type", respondType, "to")
 	fmt.Printf("% X\n", t)
 
+	fmt.Println(globalFd)
 	err = syscall.Sendto(globalFd, response, 0, &d)
-	fmt.Println(err.Error())
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
