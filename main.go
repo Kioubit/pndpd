@@ -6,6 +6,7 @@ import (
 )
 
 func main() {
+	fmt.Println("PNDPD Version 0.3 by Kioubit")
 	fmt.Println("Usage: pndpd readconfig <path to file>")
 	fmt.Println("Usage: pndpd respond <interface> <optional whitelist of CIDRs separated with a semicolon>")
 	fmt.Println("Usage: pndpd proxy <interface1> <interface2>")
