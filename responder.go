@@ -10,6 +10,7 @@ import (
 var globalFd int
 
 func respond(iface string, requests chan *NDRequest, respondType NDPType, filter []*net.IPNet) {
+	defer stopWg.Done()
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
 		panic(err)
@@ -46,7 +47,13 @@ func respond(iface string, requests chan *NDRequest, respondType NDPType, filter
 	}
 
 	for {
-		n := <-requests
+		var n *NDRequest
+		select {
+		case <-stop:
+			return
+		case n = <-requests:
+		}
+
 		if filter != nil {
 			ok := false
 			for _, i := range filter {

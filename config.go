@@ -39,6 +39,7 @@ func readConfig(dest string) {
 		}
 		if strings.HasPrefix(line, "responder") {
 			obj := configResponder{}
+			filter := ""
 			for {
 				scanner.Scan()
 				line = scanner.Text()
@@ -46,9 +47,10 @@ func readConfig(dest string) {
 					obj.Iface = strings.TrimSpace(strings.TrimPrefix(line, "iface"))
 				}
 				if strings.HasPrefix(line, "filter") {
-					obj.Filter = strings.TrimSpace(strings.TrimPrefix(line, "filter"))
+					filter += strings.TrimSpace(strings.TrimPrefix(line, "filter")) + ";"
 				}
 				if strings.HasPrefix(line, "}") {
+					obj.Filter = filter
 					break
 				}
 			}

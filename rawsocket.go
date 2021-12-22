@@ -41,7 +41,6 @@ func htons(v uint16) int {
 func htons16(v uint16) uint16 { return v<<8 | v>>8 }
 
 func listen(iface string, responder chan *NDRequest, requestType NDPType) {
-
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
 		panic(err.Error())
@@ -55,7 +54,11 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	defer syscall.Close(fd)
+	go func() {
+		<-stop
+		syscall.Close(fd)
+		stopWg.Done() // syscall.read does not release when the file descriptor is closed
+	}()
 	fmt.Println("Obtained fd ", fd)
 
 	if len([]byte(iface)) > syscall.IFNAMSIZ {
