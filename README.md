@@ -22,5 +22,7 @@ import "pndpd/pndp"
 pndp.SimpleRespond(iface string, filter []*net.IPNet)
 
 pndp.Proxy(iface1, iface2 string)
+
+pndp.WaitForSignal()
 ````
 Pull request are welcome for any functionality you add.
