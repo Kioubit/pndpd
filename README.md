@@ -1,4 +1,4 @@
-# PNDPD - NDP Responder
+# PNDPD - NDP Responder + Proxy
 ## Features
 - Efficiently process incoming packets using bpf (which runs in the kernel)
 - Respond to all NDP solicitations on an interface
@@ -22,4 +22,5 @@ import "pndpd/pndp"
 pndp.SimpleRespond(iface string, filter []*net.IPNet)
 
 pndp.Proxy(iface1, iface2 string)
-```` 
+````
+Pull request are welcome for any functionality you add.
