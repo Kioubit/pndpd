@@ -1,14 +1,14 @@
-package main
+package pndp
 
-type NDPType int
+type ndpType int
 
 const (
-	NDP_ADV NDPType = 0
-	NDP_SOL NDPType = 1
+	ndp_ADV ndpType = 0
+	ndp_SOL ndpType = 1
 )
 
-type NDRequest struct {
-	requestType      NDPType
+type ndpRequest struct {
+	requestType      ndpType
 	srcIP            []byte
 	answeringForIP   []byte
 	dstIP            []byte

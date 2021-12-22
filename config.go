@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"log"
 	"os"
+	"pndpd/pndp"
 	"strings"
 )
 
@@ -33,7 +34,7 @@ func readConfig(dest string) {
 		}
 		if strings.HasPrefix(line, "debug") {
 			if strings.Contains(line, "off") {
-				GlobalDebug = false
+				pndp.GlobalDebug = false
 			}
 			continue
 		}
@@ -54,7 +55,7 @@ func readConfig(dest string) {
 					break
 				}
 			}
-			go simpleRespond(obj.Iface, parseFilter(obj.Filter))
+			pndp.SimpleRespond(obj.Iface, pndp.ParseFilter(obj.Filter))
 		}
 		if strings.HasPrefix(line, "proxy") {
 			obj := configProxy{}
@@ -71,7 +72,7 @@ func readConfig(dest string) {
 					break
 				}
 			}
-			go proxy(obj.Iface1, obj.Iface2)
+			pndp.Proxy(obj.Iface1, obj.Iface2)
 		}
 	}
 

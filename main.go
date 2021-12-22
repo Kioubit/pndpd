@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"pndpd/pndp"
 )
 
 func main() {
@@ -16,19 +17,19 @@ func main() {
 	switch os.Args[1] {
 	case "respond":
 		if len(os.Args) == 4 {
-			go simpleRespond(os.Args[2], parseFilter(os.Args[3]))
+			pndp.SimpleRespond(os.Args[2], pndp.ParseFilter(os.Args[3]))
 		} else {
-			go simpleRespond(os.Args[2], nil)
+			pndp.SimpleRespond(os.Args[2], nil)
 		}
 	case "proxy":
-		go proxy(os.Args[2], os.Args[3])
+		pndp.Proxy(os.Args[2], os.Args[3])
 	case "readconfig":
 		readConfig(os.Args[2])
 	default:
 		printUsage()
 		return
 	}
-	waitForSignal()
+	pndp.WaitForSignal()
 }
 
 func printUsage() {

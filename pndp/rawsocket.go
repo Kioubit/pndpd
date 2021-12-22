@@ -1,4 +1,4 @@
-package main
+package pndp
 
 import (
 	"fmt"
@@ -9,11 +9,11 @@ import (
 	"unsafe"
 )
 
-// Filter represents a classic BPF filter program that can be applied to a socket
-type Filter []bpf.Instruction
+// bpfFilter represents a classic BPF filter program that can be applied to a socket
+type bpfFilter []bpf.Instruction
 
 // ApplyTo applies the current filter onto the provided file descriptor
-func (filter Filter) ApplyTo(fd int) (err error) {
+func (filter bpfFilter) ApplyTo(fd int) (err error) {
 	var assembled []bpf.RawInstruction
 	if assembled, err = bpf.Assemble(filter); err != nil {
 		return err
@@ -40,7 +40,7 @@ func htons(v uint16) int {
 }
 func htons16(v uint16) uint16 { return v<<8 | v>>8 }
 
-func listen(iface string, responder chan *NDRequest, requestType NDPType) {
+func listen(iface string, responder chan *ndpRequest, requestType ndpType) {
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
 		panic(err.Error())
@@ -71,7 +71,7 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 	}
 
 	var protocolNo uint32
-	if requestType == NDP_SOL {
+	if requestType == ndp_SOL {
 		//Neighbor Solicitation
 		protocolNo = 0x87
 	} else {
@@ -79,7 +79,7 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 		protocolNo = 0x88
 	}
 
-	var f Filter = []bpf.Instruction{
+	var f bpfFilter = []bpf.Instruction{
 		// Load "EtherType" field from the ethernet header.
 		bpf.LoadAbsolute{Off: 12, Size: 2},
 		// Jump to the drop packet instruction if EtherType is not IPv6.
@@ -120,7 +120,7 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 			fmt.Printf("% X\n", buf[:numRead][80:86])
 			fmt.Println()
 		}
-		responder <- &NDRequest{
+		responder <- &ndpRequest{
 			requestType:      requestType,
 			srcIP:            buf[:numRead][22:38],
 			dstIP:            buf[:numRead][38:54],

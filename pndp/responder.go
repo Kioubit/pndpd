@@ -1,4 +1,4 @@
-package main
+package pndp
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 
 var globalFd int
 
-func respond(iface string, requests chan *NDRequest, respondType NDPType, filter []*net.IPNet) {
+func respond(iface string, requests chan *ndpRequest, respondType ndpType, filter []*net.IPNet) {
 	defer stopWg.Done()
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
@@ -35,7 +35,7 @@ func respond(iface string, requests chan *NDRequest, respondType NDPType, filter
 		if err != nil {
 			break
 		}
-		if IsIPv6(tip.String()) {
+		if isIpv6(tip.String()) {
 			if tip.IsGlobalUnicast() {
 				result = tip
 				_, tnet, _ := net.ParseCIDR("fc00::/7")
@@ -47,7 +47,7 @@ func respond(iface string, requests chan *NDRequest, respondType NDPType, filter
 	}
 
 	for {
-		var n *NDRequest
+		var n *ndpRequest
 		select {
 		case <-stop:
 			return
@@ -78,7 +78,7 @@ func respond(iface string, requests chan *NDRequest, respondType NDPType, filter
 	}
 }
 
-func pkt(ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType NDPType) {
+func pkt(ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType ndpType) {
 	v6, err := newIpv6Header(ownIP, dstIP)
 	if err != nil {
 		return

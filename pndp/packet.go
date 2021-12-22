@@ -1,4 +1,4 @@
-package main
+package pndp
 
 import (
 	"encoding/binary"
@@ -9,11 +9,11 @@ import (
 
 var emptyIpv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
-type Payload interface {
+type payload interface {
 	constructPacket() ([]byte, int)
 }
 
-type IPv6Header struct {
+type ipv6Header struct {
 	protocol   byte
 	srcIP      []byte
 	dstIP      []byte
@@ -21,14 +21,14 @@ type IPv6Header struct {
 	payload    []byte
 }
 
-func newIpv6Header(srcIp []byte, dstIp []byte) (*IPv6Header, error) {
+func newIpv6Header(srcIp []byte, dstIp []byte) (*ipv6Header, error) {
 	if len(dstIp) != 16 || len(srcIp) != 16 {
 		return nil, errors.New("malformed IP")
 	}
-	return &IPv6Header{dstIP: dstIp, srcIP: srcIp, protocol: 0x3a}, nil
+	return &ipv6Header{dstIP: dstIp, srcIP: srcIp, protocol: 0x3a}, nil
 }
 
-func (h *IPv6Header) addPayload(payload Payload) {
+func (h *ipv6Header) addPayload(payload payload) {
 	bPayload, checksumPos := payload.constructPacket()
 	bPayloadLen := make([]byte, 2)
 	binary.BigEndian.PutUint16(bPayloadLen, uint16(len(bPayload)))
@@ -44,14 +44,14 @@ func (h *IPv6Header) addPayload(payload Payload) {
 	h.payload = bPayload
 }
 
-func (h *IPv6Header) constructPacket() []byte {
+func (h *ipv6Header) constructPacket() []byte {
 	header := []byte{
 		0x60,            // v6
 		0,               // qos
 		0,               // qos
 		0,               // qos
-		h.payloadLen[0], // Payload Length
-		h.payloadLen[1], // Payload Length
+		h.payloadLen[0], // payload Length
+		h.payloadLen[1], // payload Length
 		h.protocol,      // Protocol next header
 		0xff,            // Hop limit
 	}
@@ -61,28 +61,28 @@ func (h *IPv6Header) constructPacket() []byte {
 	return final
 }
 
-type NdpPayload struct {
-	packetType     NDPType
+type ndpPayload struct {
+	packetType     ndpType
 	answeringForIP []byte
 	mac            []byte
 }
 
-func newNdpPacket(answeringForIP []byte, mac []byte, packetType NDPType) (*NdpPayload, error) {
+func newNdpPacket(answeringForIP []byte, mac []byte, packetType ndpType) (*ndpPayload, error) {
 	if len(answeringForIP) != 16 || len(mac) != 6 {
 		return nil, errors.New("malformed IP")
 	}
-	return &NdpPayload{
+	return &ndpPayload{
 		packetType:     packetType,
 		answeringForIP: answeringForIP,
 		mac:            mac,
 	}, nil
 }
 
-func (p *NdpPayload) constructPacket() ([]byte, int) {
+func (p *ndpPayload) constructPacket() ([]byte, int) {
 	var protocol byte
 	var flags byte
 	var linkType byte
-	if p.packetType == NDP_SOL {
+	if p.packetType == ndp_SOL {
 		protocol = 0x87
 		flags = 0x0
 		linkType = 0x01
@@ -92,7 +92,7 @@ func (p *NdpPayload) constructPacket() ([]byte, int) {
 		linkType = 0x02
 	}
 	header := []byte{
-		protocol, // Type: NDPType
+		protocol, // Type: ndpType
 		0x0,      // Code
 		0x0,      // Checksum filled in later
 		0x0,      // Checksum filled in later
@@ -113,7 +113,7 @@ func (p *NdpPayload) constructPacket() ([]byte, int) {
 	return final, 2
 }
 
-func calculateChecksum(h *IPv6Header, payload []byte) uint16 {
+func calculateChecksum(h *ipv6Header, payload []byte) uint16 {
 	sumPseudoHeader := checksumAddition(h.srcIP) + checksumAddition(h.dstIP) + checksumAddition([]byte{0x00, h.protocol}) + checksumAddition(h.payloadLen)
 	sumPayload := checksumAddition(payload)
 	sumTotal := sumPayload + sumPseudoHeader
@@ -133,7 +133,7 @@ func checksumAddition(b []byte) uint32 {
 	return sum
 }
 
-func IsIPv6(ip string) bool {
+func isIpv6(ip string) bool {
 	rip := net.ParseIP(ip)
 	return rip != nil && strings.Contains(ip, ":")
 }
