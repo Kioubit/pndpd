@@ -56,13 +56,12 @@ func wgWaitTimout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	}
 }
 
-// SimpleRespond
+// SimpleRespond (Non blocking)
 //
 // iface - The interface to listen to and respond from
 //
-// filter - Optional (can be nil) list of CIDRs to whitelist
-//
-// Non blocking
+// filter - Optional (can be nil) list of CIDRs to whitelist. Must be IPV6!
+// ParseFilter verifies ipv6
 func SimpleRespond(iface string, filter []*net.IPNet) {
 	go simpleRespond(iface, filter)
 }

@@ -20,6 +20,7 @@ package main
 import "pndpd/pndp"
 
 pndp.SimpleRespond(iface string, filter []*net.IPNet)
+pndp.ParseFilter(f string) []*net.IPNet
 
 pndp.Proxy(iface1, iface2 string)
 
