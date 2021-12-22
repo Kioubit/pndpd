@@ -11,4 +11,15 @@
 pndpd readconfig <path to file>
 pndpd respond <interface> <optional whitelist of CIDRs separated with a semicolon>
 pndpd proxy <interface1> <interface2>
+````
+
+### Developing
+It is easy to add functionality to PNDPD. For additions outside the core functionality you only need to keep the following methods in mind:
+```` 
+package main
+import "pndpd/pndp"
+
+pndp.SimpleRespond(iface string, filter []*net.IPNet)
+
+pndp.Proxy(iface1, iface2 string)
 ```` 
