@@ -70,45 +70,32 @@ func listen(iface string, responder chan *NDRequest, requestType NDPType) {
 		panic(err.Error())
 	}
 
-	var f Filter
+	var protocolNo uint32
 	if requestType == NDP_SOL {
-		f = []bpf.Instruction{
-			// Load "EtherType" field from the ethernet header.
-			bpf.LoadAbsolute{Off: 12, Size: 2},
-			// Jump to the drop packet instruction if EtherType is not IPv6.
-			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 4},
-			// Load "Next Header" field from IPV6 header.
-			bpf.LoadAbsolute{Off: 20, Size: 1},
-			// Jump to the drop packet instruction if Next Header is not ICMPv6.
-			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 2},
-			// Load "Type" field from ICMPv6 header.
-			bpf.LoadAbsolute{Off: 54, Size: 1},
-			// Jump to the drop packet instruction if Type is not Neighbor Solicitation.
-			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x87, SkipTrue: 1},
-			// Verdict is "send up to 4k of the packet to userspace."buf
-			bpf.RetConstant{Val: 4096},
-			// Verdict is "ignore packet."
-			bpf.RetConstant{Val: 0},
-		}
+		//Neighbor Solicitation
+		protocolNo = 0x87
 	} else {
-		f = []bpf.Instruction{
-			// Load "EtherType" field from the ethernet header.
-			bpf.LoadAbsolute{Off: 12, Size: 2},
-			// Jump to the drop packet instruction if EtherType is not IPv6.
-			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 4},
-			// Load "Next Header" field from IPV6 header.
-			bpf.LoadAbsolute{Off: 20, Size: 1},
-			// Jump to the drop packet instruction if Next Header is not ICMPv6.
-			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 2},
-			// Load "Type" field from ICMPv6 header.
-			bpf.LoadAbsolute{Off: 54, Size: 1},
-			// Jump to the drop packet instruction if Type is not Neighbor Advertisement.
-			bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x88, SkipTrue: 1},
-			// Verdict is "send up to 4k of the packet to userspace."
-			bpf.RetConstant{Val: 4096},
-			// Verdict is "ignore packet."
-			bpf.RetConstant{Val: 0},
-		}
+		//Neighbor Advertisement
+		protocolNo = 0x88
+	}
+
+	var f Filter = []bpf.Instruction{
+		// Load "EtherType" field from the ethernet header.
+		bpf.LoadAbsolute{Off: 12, Size: 2},
+		// Jump to the drop packet instruction if EtherType is not IPv6.
+		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 4},
+		// Load "Next Header" field from IPV6 header.
+		bpf.LoadAbsolute{Off: 20, Size: 1},
+		// Jump to the drop packet instruction if Next Header is not ICMPv6.
+		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 2},
+		// Load "Type" field from ICMPv6 header.
+		bpf.LoadAbsolute{Off: 54, Size: 1},
+		// Jump to the drop packet instruction if Type is not Neighbor Solicitation / Advertisement.
+		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: protocolNo, SkipTrue: 1},
+		// Verdict is "send up to 4k of the packet to userspace."buf
+		bpf.RetConstant{Val: 4096},
+		// Verdict is "ignore packet."
+		bpf.RetConstant{Val: 0},
 	}
 
 	err = f.ApplyTo(fd)
