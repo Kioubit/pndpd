@@ -4,14 +4,14 @@
 - Respond to all NDP solicitations on an interface
 - Respond to NDP solicitations for whitelisted addresses on an interface
 - Proxy NDP between interfaces with an optional whitelist for neighbor solicitations
-- Optionally automatically determine whitelist based on the IPs assigned to the interfaces 
+- Optionally determine whitelist automatically based on the IPs assigned to the interfaces 
 - Permissions required: root or CAP_NET_RAW
 
 ## Usage
 ```` 
-pndpd config <path to file>")
-pndpd respond <interface> <optional whitelist of CIDRs separated by a semicolon>")
-pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>")
+pndpd config <path to file>
+pndpd respond <interface> <optional whitelist of CIDRs separated by a semicolon>
+pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>
 ````
 More options and additional documentation in the example config file (pndpd.conf).
 
@@ -31,4 +31,4 @@ proxyInstance := pndp.NewProxy(iface1 string, iface2 string, filter []*net.IPNet
 proxyInstance.Start()
 proxyInstance.Stop()
 ````
-Pull request are welcome for any functionality you add.
+Pull requests are welcome for any functionality you add.

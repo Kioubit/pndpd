@@ -126,7 +126,7 @@ func (obj *ProxyObj) start() {
 }
 
 //Stop a running Proxy instance
-// Returns false on success
+// Returns false on error
 func (obj *ProxyObj) Stop() bool {
 	close(obj.stopChan)
 	fmt.Println("Shutting down proxy instance..")
