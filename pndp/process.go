@@ -3,43 +3,157 @@ package pndp
 import (
 	"fmt"
 	"net"
-	"os"
-	"os/signal"
-	"runtime/pprof"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
 var GlobalDebug = false
 
-// Items needed for graceful shutdown
-var stop = make(chan struct{})
-var stopWg sync.WaitGroup
-var sigCh = make(chan os.Signal)
-
-// WaitForSignal Waits (blocking) for the program to be interrupted by the OS and then gracefully shuts down releasing all resources
-func WaitForSignal() {
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	<-sigCh
-	Shutdown()
+type ResponderObj struct {
+	stopChan  chan struct{}
+	stopWG    *sync.WaitGroup
+	iface     string
+	filter    []*net.IPNet
+	autosense string
+}
+type ProxyObj struct {
+	stopChan  chan struct{}
+	stopWG    *sync.WaitGroup
+	iface1    string
+	iface2    string
+	filter    []*net.IPNet
+	autosense string
 }
 
-// Shutdown Exits the program gracefully and releases all resources
+// NewResponder
 //
-//Do not use with WaitForSignal
-func Shutdown() {
-	fmt.Println("Shutting down...")
-	close(stop)
-	if wgWaitTimout(&stopWg, 10*time.Second) {
-		fmt.Println("Done")
-	} else {
-		fmt.Println("Aborting shutdown, since it is taking too long")
-		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+// iface - The interface to listen to and respond from
+//
+// filter - Optional (can be nil) list of CIDRs to whitelist. Must be IPV6! ParseFilter verifies ipv6
+//
+// With the optional autosenseInterface argument, the whitelist is configured based on the addresses assigned to the interface specified. This works even if the IP addresses change frequently.
+// Start() must be called on the object to actually start responding
+func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) *ResponderObj {
+	var s sync.WaitGroup
+	return &ResponderObj{
+		stopChan:  make(chan struct{}),
+		stopWG:    &s,
+		iface:     iface,
+		filter:    filter,
+		autosense: autosenseInterface,
 	}
+}
+func (obj *ResponderObj) Start() {
+	go obj.start()
+}
+func (obj *ResponderObj) start() {
+	obj.stopWG.Add(1)
+	requests := make(chan *ndpRequest, 100)
+	defer func() {
+		close(requests)
+		obj.stopWG.Done()
+	}()
+	go respond(obj.iface, requests, ndp_ADV, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
+	go listen(obj.iface, requests, ndp_SOL, obj.stopWG, obj.stopChan)
+	fmt.Println("Started responder instance")
+	<-obj.stopChan
+}
 
-	os.Exit(0)
+//Stop a running Responder instance
+// Returns false on success
+func (obj *ResponderObj) Stop() bool {
+	close(obj.stopChan)
+	fmt.Println("Shutting down responder instance..")
+	if wgWaitTimout(obj.stopWG, 10*time.Second) {
+		fmt.Println("Done")
+		return true
+	} else {
+		fmt.Println("Error shutting down instance")
+		return false
+	}
+}
+
+// NewProxy Proxy NDP between interfaces iface1 and iface2 with an optional filter (whitelist)
+//
+// filter - Optional (can be nil) list of CIDRs to whitelist. Must be IPV6! ParseFilter verifies ipv6
+//
+// With the optional autosenseInterface argument, the whitelist is configured based on the addresses assigned to the interface specified. This works even if the IP addresses change frequently.
+//
+// Start() must be called on the object to actually start proxying
+func NewProxy(iface1 string, iface2 string, filter []*net.IPNet, autosenseInterface string) *ProxyObj {
+	var s sync.WaitGroup
+	return &ProxyObj{
+		stopChan:  make(chan struct{}),
+		stopWG:    &s,
+		iface1:    iface1,
+		iface2:    iface2,
+		filter:    filter,
+		autosense: autosenseInterface,
+	}
+}
+
+func (obj *ProxyObj) Start() {
+	go obj.start()
+}
+func (obj *ProxyObj) start() {
+	obj.stopWG.Add(1)
+	defer func() {
+		obj.stopWG.Done()
+	}()
+
+	req_iface1_sol_iface2 := make(chan *ndpRequest, 100)
+	defer close(req_iface1_sol_iface2)
+	go listen(obj.iface1, req_iface1_sol_iface2, ndp_SOL, obj.stopWG, obj.stopChan)
+	go respond(obj.iface2, req_iface1_sol_iface2, ndp_SOL, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
+
+	req_iface2_sol_iface1 := make(chan *ndpRequest, 100)
+	defer close(req_iface2_sol_iface1)
+	go listen(obj.iface2, req_iface2_sol_iface1, ndp_SOL, obj.stopWG, obj.stopChan)
+	go respond(obj.iface1, req_iface2_sol_iface1, ndp_SOL, nil, "", obj.stopWG, obj.stopChan)
+
+	req_iface1_adv_iface2 := make(chan *ndpRequest, 100)
+	defer close(req_iface1_adv_iface2)
+	go listen(obj.iface1, req_iface1_adv_iface2, ndp_ADV, obj.stopWG, obj.stopChan)
+	go respond(obj.iface2, req_iface1_adv_iface2, ndp_ADV, nil, "", obj.stopWG, obj.stopChan)
+
+	req_iface2_adv_iface1 := make(chan *ndpRequest, 100)
+	defer close(req_iface2_adv_iface1)
+	go listen(obj.iface2, req_iface2_adv_iface1, ndp_ADV, obj.stopWG, obj.stopChan)
+	go respond(obj.iface1, req_iface2_adv_iface1, ndp_ADV, nil, "", obj.stopWG, obj.stopChan)
+
+	<-obj.stopChan
+}
+
+//Stop a running Proxy instance
+// Returns false on success
+func (obj *ProxyObj) Stop() bool {
+	close(obj.stopChan)
+	fmt.Println("Shutting down proxy instance..")
+	if wgWaitTimout(obj.stopWG, 10*time.Second) {
+		fmt.Println("Done")
+		return true
+	} else {
+		fmt.Println("Error shutting down instance")
+		return false
+	}
+}
+
+// ParseFilter Helper Function to Parse a string of CIDRs separated by a semicolon as a Whitelist for SimpleRespond
+func ParseFilter(f string) []*net.IPNet {
+	if f == "" {
+		return nil
+	}
+	s := strings.Split(f, ";")
+	result := make([]*net.IPNet, len(s))
+	for i, n := range s {
+		_, cidr, err := net.ParseCIDR(n)
+		if err != nil {
+			panic(err)
+		}
+		result[i] = cidr
+	}
+	return result
 }
 
 func wgWaitTimout(wg *sync.WaitGroup, timeout time.Duration) bool {
@@ -54,71 +168,4 @@ func wgWaitTimout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	case <-time.After(timeout):
 		return false
 	}
-}
-
-// SimpleRespond (Non blocking)
-//
-// iface - The interface to listen to and respond from
-//
-// filter - Optional (can be nil) list of CIDRs to whitelist. Must be IPV6!
-// ParseFilter verifies ipv6
-func SimpleRespond(iface string, filter []*net.IPNet) {
-	go simpleRespond(iface, filter)
-}
-
-func simpleRespond(iface string, filter []*net.IPNet) {
-	defer stopWg.Done()
-	stopWg.Add(3) // This function, 2x goroutines
-	requests := make(chan *ndpRequest, 100)
-	defer close(requests)
-	go respond(iface, requests, ndp_ADV, filter)
-	go listen(iface, requests, ndp_SOL)
-	<-stop
-}
-
-// Proxy NDP between interfaces iface1 and iface2
-//
-// Non blocking
-func Proxy(iface1, iface2 string) {
-	go proxy(iface1, iface2)
-}
-
-func proxy(iface1, iface2 string) {
-	defer stopWg.Done()
-	stopWg.Add(9) // This function, 8x goroutines
-
-	req_iface1_sol_iface2 := make(chan *ndpRequest, 100)
-	defer close(req_iface1_sol_iface2)
-	go listen(iface1, req_iface1_sol_iface2, ndp_SOL)
-	go respond(iface2, req_iface1_sol_iface2, ndp_SOL, nil)
-
-	req_iface2_sol_iface1 := make(chan *ndpRequest, 100)
-	defer close(req_iface2_sol_iface1)
-	go listen(iface2, req_iface2_sol_iface1, ndp_SOL)
-	go respond(iface1, req_iface2_sol_iface1, ndp_SOL, nil)
-
-	req_iface1_adv_iface2 := make(chan *ndpRequest, 100)
-	defer close(req_iface1_adv_iface2)
-	go listen(iface1, req_iface1_adv_iface2, ndp_ADV)
-	go respond(iface2, req_iface1_adv_iface2, ndp_ADV, nil)
-
-	req_iface2_adv_iface1 := make(chan *ndpRequest, 100)
-	defer close(req_iface2_adv_iface1)
-	go listen(iface2, req_iface2_adv_iface1, ndp_ADV)
-	go respond(iface1, req_iface2_adv_iface1, ndp_ADV, nil)
-	<-stop
-}
-
-// ParseFilter Helper Function to Parse a string of CIDRs separated by a semicolon as a Whitelist for SimpleRespond
-func ParseFilter(f string) []*net.IPNet {
-	s := strings.Split(f, ";")
-	result := make([]*net.IPNet, len(s))
-	for i, n := range s {
-		_, cidr, err := net.ParseCIDR(n)
-		if err != nil {
-			panic(err)
-		}
-		result[i] = cidr
-	}
-	return result
 }

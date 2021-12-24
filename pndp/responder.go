@@ -4,19 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"sync"
 	"syscall"
 )
 
-var globalFd int
-
-func respond(iface string, requests chan *ndpRequest, respondType ndpType, filter []*net.IPNet) {
-	defer stopWg.Done()
+func respond(iface string, requests chan *ndpRequest, respondType ndpType, filter []*net.IPNet, autoSense string, stopWG *sync.WaitGroup, stopChan chan struct{}) {
+	stopWG.Add(1)
+	defer stopWG.Done()
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
 		panic(err)
 	}
-	defer syscall.Close(globalFd)
-	globalFd = fd
+	defer syscall.Close(fd)
 	err = syscall.BindToDevice(fd, iface)
 	if err != nil {
 		panic(err)
@@ -49,16 +48,36 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, filte
 	for {
 		var n *ndpRequest
 		select {
-		case <-stop:
+		case <-stopChan:
 			return
 		case n = <-requests:
+		}
+
+		if autoSense != "" {
+			autoiface, err := net.InterfaceByName(autoSense)
+			if err != nil {
+				panic(err)
+			}
+			autoifaceaddrs, err := autoiface.Addrs()
+
+			for _, n := range autoifaceaddrs {
+				_, anet, err := net.ParseCIDR(n.String())
+				if err != nil {
+					break
+				}
+				if isIpv6(anet.String()) {
+					filter = append(filter, anet)
+				}
+			}
 		}
 
 		if filter != nil {
 			ok := false
 			for _, i := range filter {
 				if i.Contains(n.answeringForIP) {
-					fmt.Println("filter allowed IP", n.answeringForIP)
+					if GlobalDebug {
+						fmt.Println("Responded for whitelisted IP", n.answeringForIP)
+					}
 					ok = true
 					break
 				}
@@ -69,16 +88,16 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, filte
 		}
 
 		if n.sourceIface == iface {
-			pkt(result, n.srcIP, n.answeringForIP, niface.HardwareAddr, respondType)
+			pkt(fd, result, n.srcIP, n.answeringForIP, niface.HardwareAddr, respondType)
 		} else {
 			if !bytes.Equal(n.mac, n.receivedIfaceMac) {
-				pkt(n.srcIP, n.dstIP, n.answeringForIP, niface.HardwareAddr, respondType)
+				pkt(fd, n.srcIP, n.dstIP, n.answeringForIP, niface.HardwareAddr, respondType)
 			}
 		}
 	}
 }
 
-func pkt(ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType ndpType) {
+func pkt(fd int, ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType ndpType) {
 	v6, err := newIpv6Header(ownIP, dstIP)
 	if err != nil {
 		return
@@ -101,7 +120,7 @@ func pkt(ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType ndpTy
 		fmt.Println("Sending packet of type", respondType, "to")
 		fmt.Printf("% X\n", t)
 	}
-	err = syscall.Sendto(globalFd, response, 0, &d)
+	err = syscall.Sendto(fd, response, 0, &d)
 	if err != nil {
 		fmt.Println(err.Error())
 	}

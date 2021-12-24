@@ -5,6 +5,7 @@ import (
 	"golang.org/x/net/bpf"
 	"golang.org/x/sys/unix"
 	"net"
+	"sync"
 	"syscall"
 	"unsafe"
 )
@@ -40,7 +41,9 @@ func htons(v uint16) int {
 }
 func htons16(v uint16) uint16 { return v<<8 | v>>8 }
 
-func listen(iface string, responder chan *ndpRequest, requestType ndpType) {
+func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopWG *sync.WaitGroup, stopChan chan struct{}) {
+	stopWG.Add(1)
+	defer stopWG.Done()
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
 		panic(err.Error())
@@ -55,9 +58,9 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType) {
 		fmt.Println(err.Error())
 	}
 	go func() {
-		<-stop
+		<-stopChan
 		syscall.Close(fd)
-		stopWg.Done() // syscall.read does not release when the file descriptor is closed
+		stopWG.Done() // syscall.read does not release when the file descriptor is closed
 	}()
 	fmt.Println("Obtained fd ", fd)
 
