@@ -85,16 +85,16 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		//Neighbor Advertisement
 		protocolNo = 0x88
 	}
-
-	var f bpfFilter = []bpf.Instruction{
+	var f bpfFilter
+	f = []bpf.Instruction{
 		// Load "EtherType" field from the ethernet header.
 		bpf.LoadAbsolute{Off: 12, Size: 2},
 		// Jump to the drop packet instruction if EtherType is not IPv6.
-		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 4},
+		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x86dd, SkipTrue: 5},
 		// Load "Next Header" field from IPV6 header.
 		bpf.LoadAbsolute{Off: 20, Size: 1},
 		// Jump to the drop packet instruction if Next Header is not ICMPv6.
-		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 2},
+		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: 0x3a, SkipTrue: 3},
 		// Load "Type" field from ICMPv6 header.
 		bpf.LoadAbsolute{Off: 54, Size: 1},
 		// Jump to the drop packet instruction if Type is not Neighbor Solicitation / Advertisement.
