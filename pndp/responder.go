@@ -162,12 +162,16 @@ func getAddressFromQuestionListRetry(targetIP []byte, ndpQuestionChan chan *ndpQ
 	if success {
 		return result, true
 	}
-	select {
-	case q := <-ndpQuestionChan:
-		ndpQuestionsList = append(ndpQuestionsList, q)
-	default:
-		return nil, false
+forloop:
+	for {
+		select {
+		case q := <-ndpQuestionChan:
+			ndpQuestionsList = append(ndpQuestionsList, q)
+		default:
+			break forloop
+		}
 	}
+
 	result, success = getAddressFromQuestionList(targetIP, ndpQuestionsList)
 	return result, success
 }
