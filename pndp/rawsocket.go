@@ -62,7 +62,9 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		syscall.Close(fd)
 		stopWG.Done() // syscall.read does not release when the file descriptor is closed
 	}()
-	fmt.Println("Obtained fd ", fd)
+	if GlobalDebug {
+		fmt.Println("Obtained fd ", fd)
+	}
 
 	if len([]byte(iface)) > syscall.IFNAMSIZ {
 		panic("Interface size larger then maximum allowed by the kernel")
@@ -113,6 +115,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			panic(err)
 		}
 		if GlobalDebug {
+			fmt.Println("Got packet on", iface, "of type", requestType)
 			fmt.Println("Source IP:")
 			fmt.Printf("% X\n", buf[:numRead][22:38])
 			fmt.Println("Destination IP:")

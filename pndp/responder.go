@@ -87,6 +87,10 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, filte
 			}
 		}
 
+		if GlobalDebug {
+			fmt.Println("Getting ready to send packet of type", respondType, "out on interface", iface)
+		}
+
 		if n.sourceIface == iface {
 			pkt(fd, result, n.srcIP, n.answeringForIP, niface.HardwareAddr, respondType)
 		} else {
