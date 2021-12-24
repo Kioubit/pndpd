@@ -4,7 +4,7 @@
 - Respond to all NDP solicitations on an interface
 - Respond to NDP solicitations for whitelisted addresses on an interface
 - Proxy NDP between interfaces with an optional whitelist for neighbor solicitations
-- Optionally automatically determine whitelist based on the IPs assigned to the interfaces 
+- Optionally determine whitelist automatically based on the IPs assigned to the interfaces 
 - Permissions required: root or CAP_NET_RAW
 
 ## Usage
@@ -31,4 +31,4 @@ proxyInstance := pndp.NewProxy(iface1 string, iface2 string, filter []*net.IPNet
 proxyInstance.Start()
 proxyInstance.Stop()
 ````
-Pull request are welcome for any functionality you add.
+Pull requests are welcome for any functionality you add.
