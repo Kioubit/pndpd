@@ -16,3 +16,8 @@ type ndpRequest struct {
 	receivedIfaceMac []byte
 	sourceIface      string
 }
+
+type ndpQuestion struct {
+	targetIP []byte
+	askedBy  []byte
+}

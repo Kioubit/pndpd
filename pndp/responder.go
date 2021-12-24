@@ -8,7 +8,8 @@ import (
 	"syscall"
 )
 
-func respond(iface string, requests chan *ndpRequest, respondType ndpType, filter []*net.IPNet, autoSense string, stopWG *sync.WaitGroup, stopChan chan struct{}) {
+func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQuestionChan chan *ndpQuestion, filter []*net.IPNet, autoSense string, stopWG *sync.WaitGroup, stopChan chan struct{}) {
+	var ndpQuestionsList = make([]*ndpQuestion, 0, 100)
 	stopWG.Add(1)
 	defer stopWG.Done()
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
@@ -47,10 +48,21 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, filte
 
 	for {
 		var n *ndpRequest
-		select {
-		case <-stopChan:
-			return
-		case n = <-requests:
+		if ndpQuestionChan == nil && respondType == ndp_ADV {
+			select {
+			case <-stopChan:
+				return
+			case n = <-requests:
+			}
+		} else {
+			select {
+			case <-stopChan:
+				return
+			case q := <-ndpQuestionChan:
+				ndpQuestionsList = append(ndpQuestionsList, q)
+				continue
+			case n = <-requests:
+			}
 		}
 
 		if autoSense != "" {
@@ -94,9 +106,22 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, filte
 		if n.sourceIface == iface {
 			pkt(fd, result, n.srcIP, n.answeringForIP, niface.HardwareAddr, respondType)
 		} else {
-			if !bytes.Equal(n.mac, n.receivedIfaceMac) {
-				pkt(fd, n.srcIP, n.dstIP, n.answeringForIP, niface.HardwareAddr, respondType)
+			if respondType == ndp_ADV {
+				success := false
+				n.dstIP, success = getAddressFromQuestionListRetry(n.answeringForIP, ndpQuestionChan, ndpQuestionsList)
+				if !success {
+					if GlobalDebug {
+						fmt.Println("Nobody has asked for this IP")
+					}
+					continue
+				}
+			} else {
+				ndpQuestionChan <- &ndpQuestion{
+					targetIP: n.answeringForIP,
+					askedBy:  n.srcIP,
+				}
 			}
+			pkt(fd, result, n.dstIP, n.answeringForIP, niface.HardwareAddr, respondType)
 		}
 	}
 }
@@ -128,4 +153,36 @@ func pkt(fd int, ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondTy
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+}
+
+func getAddressFromQuestionListRetry(targetIP []byte, ndpQuestionChan chan *ndpQuestion, ndpQuestionsList []*ndpQuestion) ([]byte, bool) {
+	success := false
+	var result []byte
+	result, success = getAddressFromQuestionList(targetIP, ndpQuestionsList)
+	if success {
+		return result, true
+	}
+	select {
+	case q := <-ndpQuestionChan:
+		ndpQuestionsList = append(ndpQuestionsList, q)
+	default:
+		return nil, false
+	}
+	result, success = getAddressFromQuestionList(targetIP, ndpQuestionsList)
+	return result, success
+}
+
+func getAddressFromQuestionList(targetIP []byte, ndpQuestionsList []*ndpQuestion) ([]byte, bool) {
+	for i, _ := range ndpQuestionsList {
+		if bytes.Equal((*ndpQuestionsList[i]).targetIP, targetIP) {
+			result := (*ndpQuestionsList[i]).askedBy
+			ndpQuestionsList = removeFromQuestionList(ndpQuestionsList, i)
+			return result, true
+		}
+	}
+	return nil, false
+}
+func removeFromQuestionList(s []*ndpQuestion, i int) []*ndpQuestion {
+	s[i] = s[len(s)-1]
+	return s[:len(s)-1]
 }

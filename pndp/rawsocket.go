@@ -1,6 +1,8 @@
 package pndp
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"golang.org/x/net/bpf"
 	"golang.org/x/sys/unix"
@@ -114,8 +116,20 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		if err != nil {
 			panic(err)
 		}
+		if numRead < 86 {
+			if GlobalDebug {
+
+				fmt.Println("Dropping packet since it does not meet the minimum length requirement")
+				fmt.Printf("% X\n", buf[:numRead])
+			}
+			continue
+		}
 		if GlobalDebug {
 			fmt.Println("Got packet on", iface, "of type", requestType)
+			fmt.Printf("% X\n", buf[:numRead])
+
+			fmt.Println("Source MAC ETHER")
+			fmt.Printf("% X\n", buf[:numRead][6:12])
 			fmt.Println("Source IP:")
 			fmt.Printf("% X\n", buf[:numRead][22:38])
 			fmt.Println("Destination IP:")
@@ -126,6 +140,21 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			fmt.Printf("% X\n", buf[:numRead][80:86])
 			fmt.Println()
 		}
+
+		if bytes.Equal(buf[:numRead][6:12], niface.HardwareAddr) {
+			if GlobalDebug {
+				fmt.Println("Dropping packet from ourselves")
+			}
+			continue
+		}
+
+		if !checkPacketChecksum(buf[:numRead][22:38], buf[:numRead][38:54], buf[:numRead][54:numRead]) {
+			if GlobalDebug {
+				fmt.Println("Dropping packet because of invalid checksum")
+			}
+			continue
+		}
+
 		responder <- &ndpRequest{
 			requestType:      requestType,
 			srcIP:            buf[:numRead][22:38],
@@ -135,5 +164,36 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			receivedIfaceMac: niface.HardwareAddr,
 			sourceIface:      iface,
 		}
+	}
+}
+
+func checkPacketChecksum(scrip, dstip, payload []byte) bool {
+	v6, err := newIpv6Header(scrip, dstip)
+	if err != nil {
+		return false
+	}
+
+	packetsum := make([]byte, 2)
+	copy(packetsum, payload[2:4])
+
+	bPayloadLen := make([]byte, 2)
+	binary.BigEndian.PutUint16(bPayloadLen, uint16(len(payload)))
+	v6.payloadLen = bPayloadLen
+
+	payload[2] = 0x0
+	payload[3] = 0x0
+
+	bChecksum := make([]byte, 2)
+	binary.BigEndian.PutUint16(bChecksum, calculateChecksum(v6, payload))
+	if bytes.Equal(packetsum, bChecksum) {
+		if GlobalDebug {
+			fmt.Println("Verified received packet checksum")
+		}
+		return true
+	} else {
+		if GlobalDebug {
+			fmt.Println("Received packet checksum validation failed")
+		}
+		return false
 	}
 }

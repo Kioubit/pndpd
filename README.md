@@ -3,7 +3,7 @@
 - Efficiently process incoming packets using bpf (which runs in the kernel)
 - Respond to all NDP solicitations on an interface
 - Respond to NDP solicitations for whitelisted addresses on an interface
-- Proxy NDP between interfaces with an optional whitelist for neighbor solicitations
+- Proxy NDP between interfaces with an optional whitelist
 - Optionally determine whitelist automatically based on the IPs assigned to the interfaces 
 - Permissions required: root or CAP_NET_RAW
 
