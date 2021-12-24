@@ -17,7 +17,7 @@ func WaitForSignal() {
 }
 
 func main() {
-	fmt.Println("PNDPD Version 0.5 - Kioubit 2021")
+	fmt.Println("PNDPD Version 0.6 - Kioubit 2021")
 
 	if len(os.Args) <= 2 {
 		printUsage()
