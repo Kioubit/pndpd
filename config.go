@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"pndpd/modules"
 	"pndpd/pndp"
 	"strings"
 )
@@ -40,7 +41,7 @@ func readConfig(dest string) {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "//") {
+		if strings.HasPrefix(line, "//") || strings.TrimSpace(line) == "" {
 			continue
 		}
 		if strings.HasPrefix(line, "debug") {
@@ -50,6 +51,7 @@ func readConfig(dest string) {
 			}
 			continue
 		}
+
 		if strings.HasPrefix(line, "responder") && strings.Contains(line, "{") {
 			obj := configResponder{}
 			filter := ""
@@ -75,8 +77,7 @@ func readConfig(dest string) {
 			}
 
 			allResponders = append(allResponders, &obj)
-		}
-		if strings.HasPrefix(line, "proxy") && strings.Contains(line, "{") {
+		} else if strings.HasPrefix(line, "proxy") && strings.Contains(line, "{") {
 			obj := configProxy{}
 			filter := ""
 			for {
@@ -106,6 +107,25 @@ func readConfig(dest string) {
 				}
 			}
 			allProxies = append(allProxies, &obj)
+		} else if strings.Contains(line, "{") {
+			option := strings.TrimSuffix(strings.TrimSpace(line), "{")
+			option = strings.TrimSpace(option)
+			if modules.ModuleList != nil {
+				for i := range modules.ModuleList {
+					if (*modules.ModuleList[i]).Option == option {
+						var lines []string
+						for {
+							scanner.Scan()
+							line = strings.TrimSpace(scanner.Text())
+							lines = append(lines, line)
+							if strings.HasPrefix(line, "}") {
+								break
+							}
+						}
+						(*modules.ModuleList[i]).ConfigCallback(lines)
+					}
+				}
+			}
 		}
 	}
 

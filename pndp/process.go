@@ -57,7 +57,7 @@ func (obj *ResponderObj) start() {
 	}()
 	go respond(obj.iface, requests, ndp_ADV, nil, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
 	go listen(obj.iface, requests, ndp_SOL, obj.stopWG, obj.stopChan)
-	fmt.Println("Started responder instance on interface ", obj.iface)
+	fmt.Println("Started responder instance on interface", obj.iface)
 	<-obj.stopChan
 }
 
@@ -128,7 +128,7 @@ func (obj *ProxyObj) start() {
 	go listen(obj.iface2, req_iface2_adv_iface1, ndp_ADV, obj.stopWG, obj.stopChan)
 	go respond(obj.iface1, req_iface2_adv_iface1, ndp_ADV, out_iface2_sol_questions_iface1_adv, nil, "", obj.stopWG, obj.stopChan)
 
-	fmt.Println("Started Proxy instance for interfaces: ", obj.iface1, " and ", obj.iface2)
+	fmt.Println("Started Proxy instance for interfaces:", obj.iface1, "and", obj.iface2)
 	<-obj.stopChan
 }
 

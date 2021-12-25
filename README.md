@@ -32,7 +32,8 @@ pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by 
 ````
 More options and additional documentation in the example config file (pndpd.conf).
 
-### Developing
+## Developing
+### Adding Modules 
 It is easy to add functionality to PNDPD. For additions outside the core functionality you only need to keep the following methods in mind:
 ```` 
 package main
@@ -48,4 +49,6 @@ proxyInstance := pndp.NewProxy(iface1 string, iface2 string, filter []*net.IPNet
 proxyInstance.Start()
 proxyInstance.Stop()
 ````
+New functionality should be implemented as a module. You will find an example module under ``modules/example/``. 
+
 Pull requests are welcome for any functionality you add.

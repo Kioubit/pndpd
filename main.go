@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"pndpd/modules"
 	"pndpd/pndp"
 	"syscall"
 )
@@ -18,6 +19,13 @@ func WaitForSignal() {
 
 func main() {
 	fmt.Println("PNDPD Version 1.0 - Kioubit 2021")
+	if modules.ModuleList != nil {
+		fmt.Print("Loaded Modules: ")
+		for i := range modules.ModuleList {
+			fmt.Print((*modules.ModuleList[i]).Name + " ")
+		}
+		fmt.Println()
+	}
 
 	if len(os.Args) <= 2 {
 		printUsage()
@@ -47,6 +55,12 @@ func main() {
 	case "config":
 		readConfig(os.Args[2])
 	default:
+		for i := range modules.ModuleList {
+			if (*modules.ModuleList[i]).Option == os.Args[1] {
+				(*modules.ModuleList[i]).CommandLineCallback(os.Args)
+				return
+			}
+		}
 		printUsage()
 		return
 	}
