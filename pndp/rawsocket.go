@@ -2,7 +2,6 @@ package pndp
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"golang.org/x/net/bpf"
 	"golang.org/x/sys/unix"
@@ -46,6 +45,7 @@ func htons16(v uint16) uint16 { return v<<8 | v>>8 }
 func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopWG *sync.WaitGroup, stopChan chan struct{}) {
 	stopWG.Add(1)
 	defer stopWG.Done()
+
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
 		panic(err.Error())
@@ -61,7 +61,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	}
 	go func() {
 		<-stopChan
-		syscall.Close(fd)
+		_ = syscall.Close(fd)
 		stopWG.Done() // syscall.read does not release when the file descriptor is closed
 	}()
 	if GlobalDebug {
@@ -99,9 +99,9 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		bpf.LoadAbsolute{Off: 54, Size: 1},
 		// Jump to the drop packet instruction if Type is not Neighbor Solicitation / Advertisement.
 		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: protocolNo, SkipTrue: 1},
-		// Verdict is "send up to 4k of the packet to userspace."buf
+		// Verdict is: send up to 4096 bytes of the packet to userspace.
 		bpf.RetConstant{Val: 4096},
-		// Verdict is "ignore packet."
+		// Verdict is: "ignore packet."
 		bpf.RetConstant{Val: 0},
 	}
 
@@ -118,7 +118,6 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		}
 		if numRead < 86 {
 			if GlobalDebug {
-
 				fmt.Println("Dropping packet since it does not meet the minimum length requirement")
 				fmt.Printf("% X\n", buf[:numRead])
 			}
@@ -128,72 +127,39 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			fmt.Println("Got packet on", iface, "of type", requestType)
 			fmt.Printf("% X\n", buf[:numRead])
 
-			fmt.Println("Source MAC ETHER")
-			fmt.Printf("% X\n", buf[:numRead][6:12])
+			fmt.Println("Source mac on ethernet layer:")
+			fmt.Printf("% X\n", buf[6:12])
 			fmt.Println("Source IP:")
-			fmt.Printf("% X\n", buf[:numRead][22:38])
+			fmt.Printf("% X\n", buf[22:38])
 			fmt.Println("Destination IP:")
-			fmt.Printf("% X\n", buf[:numRead][38:54])
+			fmt.Printf("% X\n", buf[38:54])
 			fmt.Println("Requested IP:")
-			fmt.Printf("% X\n", buf[:numRead][62:78])
-			fmt.Println("Source MAC")
-			fmt.Printf("% X\n", buf[:numRead][80:86])
+			fmt.Printf("% X\n", buf[62:78])
+			if requestType == ndp_ADV {
+				fmt.Println("NDP Flags")
+				fmt.Printf("% X\n", buf[58])
+			}
+			fmt.Println("NDP MAC:")
+			fmt.Printf("% X\n", buf[80:86])
 			fmt.Println()
 		}
 
-		if bytes.Equal(buf[:numRead][6:12], niface.HardwareAddr) {
+		if bytes.Equal(buf[6:12], niface.HardwareAddr) {
 			if GlobalDebug {
 				fmt.Println("Dropping packet from ourselves")
 			}
 			continue
 		}
 
-		if !checkPacketChecksum(buf[:numRead][22:38], buf[:numRead][38:54], buf[:numRead][54:numRead]) {
-			if GlobalDebug {
-				fmt.Println("Dropping packet because of invalid checksum")
-			}
-			continue
-		}
-
 		responder <- &ndpRequest{
 			requestType:      requestType,
-			srcIP:            buf[:numRead][22:38],
-			dstIP:            buf[:numRead][38:54],
-			answeringForIP:   buf[:numRead][62:78],
-			mac:              buf[:numRead][80:86],
+			srcIP:            buf[22:38],
+			dstIP:            buf[38:54],
+			answeringForIP:   buf[62:78],
+			mac:              buf[80:86],
 			receivedIfaceMac: niface.HardwareAddr,
 			sourceIface:      iface,
+			rawPacket:        buf[:numRead],
 		}
-	}
-}
-
-func checkPacketChecksum(scrip, dstip, payload []byte) bool {
-	v6, err := newIpv6Header(scrip, dstip)
-	if err != nil {
-		return false
-	}
-
-	packetsum := make([]byte, 2)
-	copy(packetsum, payload[2:4])
-
-	bPayloadLen := make([]byte, 2)
-	binary.BigEndian.PutUint16(bPayloadLen, uint16(len(payload)))
-	v6.payloadLen = bPayloadLen
-
-	payload[2] = 0x0
-	payload[3] = 0x0
-
-	bChecksum := make([]byte, 2)
-	binary.BigEndian.PutUint16(bChecksum, calculateChecksum(v6, payload))
-	if bytes.Equal(packetsum, bChecksum) {
-		if GlobalDebug {
-			fmt.Println("Verified received packet checksum")
-		}
-		return true
-	} else {
-		if GlobalDebug {
-			fmt.Println("Received packet checksum validation failed")
-		}
-		return false
 	}
 }

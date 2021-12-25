@@ -17,7 +17,7 @@ func WaitForSignal() {
 }
 
 func main() {
-	fmt.Println("PNDPD Version 0.9 - Kioubit 2021")
+	fmt.Println("PNDPD Version 1.0 - Kioubit 2021")
 
 	if len(os.Args) <= 2 {
 		printUsage()
@@ -31,7 +31,6 @@ func main() {
 			r.Start()
 		} else {
 			r = pndp.NewResponder(os.Args[2], nil, "")
-			fmt.Println("WARNING: You should use a whitelist unless you know what you are doing")
 			r.Start()
 		}
 		WaitForSignal()

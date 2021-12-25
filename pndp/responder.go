@@ -9,60 +9,105 @@ import (
 )
 
 func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQuestionChan chan *ndpQuestion, filter []*net.IPNet, autoSense string, stopWG *sync.WaitGroup, stopChan chan struct{}) {
-	var ndpQuestionsList = make([]*ndpQuestion, 0, 100)
+	var ndpQuestionsList = make([]*ndpQuestion, 0, 40)
 	stopWG.Add(1)
 	defer stopWG.Done()
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
 		panic(err)
 	}
-	defer syscall.Close(fd)
+	defer func(fd int) {
+		_ = syscall.Close(fd)
+	}(fd)
 	err = syscall.BindToDevice(fd, iface)
 	if err != nil {
 		panic(err)
 	}
 
-	niface, err := net.InterfaceByName(iface)
+	nIface, err := net.InterfaceByName(iface)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	var result = emptyIpv6
-	ifaceaddrs, err := niface.Addrs()
+	ifaceaddrs, err := nIface.Addrs()
 
 	for _, n := range ifaceaddrs {
 		tip, _, err := net.ParseCIDR(n.String())
 		if err != nil {
 			break
 		}
+		var haveUla = false
 		if isIpv6(tip.String()) {
 			if tip.IsGlobalUnicast() {
+				haveUla = true
 				result = tip
 				_, tnet, _ := net.ParseCIDR("fc00::/7")
 				if !tnet.Contains(tip) {
 					break
 				}
+			} else if tip.IsLinkLocalUnicast() && !haveUla {
+				result = tip
 			}
 		}
 	}
 
 	for {
 		var n *ndpRequest
-		if ndpQuestionChan == nil && respondType == ndp_ADV {
+		if (ndpQuestionChan == nil && respondType == ndp_ADV) || (ndpQuestionChan != nil && respondType == ndp_SOL) {
 			select {
 			case <-stopChan:
 				return
 			case n = <-requests:
 			}
 		} else {
+			// THis is if ndpQuestionChan != nil && respondType == ndp_ADV
 			select {
 			case <-stopChan:
 				return
 			case q := <-ndpQuestionChan:
 				ndpQuestionsList = append(ndpQuestionsList, q)
+				ndpQuestionsList = cleanupQuestionList(ndpQuestionsList)
 				continue
 			case n = <-requests:
 			}
+		}
+
+		var _, LinkLocalSpace, _ = net.ParseCIDR("fe80::/10")
+		if LinkLocalSpace.Contains(n.answeringForIP) {
+			if GlobalDebug {
+				fmt.Println("Dropping packet asking for a link-local IP")
+			}
+			continue
+		}
+
+		if n.requestType == ndp_ADV {
+			if (n.rawPacket[78] != 0x02) || (n.rawPacket[79] != 0x01) {
+				if GlobalDebug {
+					fmt.Println("Dropping Advertisement packet without target Source address set")
+				}
+				continue
+			}
+			if n.rawPacket[58] == 0x0 {
+				if GlobalDebug {
+					fmt.Println("Dropping Advertisement packet without any NDP flags set")
+				}
+				continue
+			}
+		} else {
+			if (n.rawPacket[78] != 0x01) || (n.rawPacket[79] != 0x01) {
+				if GlobalDebug {
+					fmt.Println("Dropping Solicitation packet without Source address set")
+				}
+				continue
+			}
+		}
+
+		if !checkPacketChecksum(n.srcIP, n.dstIP, n.rawPacket[54:]) {
+			if GlobalDebug {
+				fmt.Println("Dropping packet because of invalid checksum")
+			}
+			continue
 		}
 
 		if autoSense != "" {
@@ -72,8 +117,8 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			}
 			autoifaceaddrs, err := autoiface.Addrs()
 
-			for _, n := range autoifaceaddrs {
-				_, anet, err := net.ParseCIDR(n.String())
+			for _, l := range autoifaceaddrs {
+				_, anet, err := net.ParseCIDR(l.String())
 				if err != nil {
 					break
 				}
@@ -104,7 +149,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		}
 
 		if n.sourceIface == iface {
-			pkt(fd, result, n.srcIP, n.answeringForIP, niface.HardwareAddr, respondType)
+			pkt(fd, result, n.srcIP, n.answeringForIP, nIface.HardwareAddr, respondType)
 		} else {
 			if respondType == ndp_ADV {
 				success := false
@@ -121,7 +166,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 					askedBy:  n.srcIP,
 				}
 			}
-			pkt(fd, result, n.dstIP, n.answeringForIP, niface.HardwareAddr, respondType)
+			pkt(fd, result, n.dstIP, n.answeringForIP, nIface.HardwareAddr, respondType)
 		}
 	}
 }
@@ -177,7 +222,7 @@ forloop:
 }
 
 func getAddressFromQuestionList(targetIP []byte, ndpQuestionsList []*ndpQuestion) ([]byte, bool) {
-	for i, _ := range ndpQuestionsList {
+	for i := range ndpQuestionsList {
 		if bytes.Equal((*ndpQuestionsList[i]).targetIP, targetIP) {
 			result := (*ndpQuestionsList[i]).askedBy
 			ndpQuestionsList = removeFromQuestionList(ndpQuestionsList, i)
@@ -189,4 +234,11 @@ func getAddressFromQuestionList(targetIP []byte, ndpQuestionsList []*ndpQuestion
 func removeFromQuestionList(s []*ndpQuestion, i int) []*ndpQuestion {
 	s[i] = s[len(s)-1]
 	return s[:len(s)-1]
+}
+
+func cleanupQuestionList(s []*ndpQuestion) []*ndpQuestion {
+	for len(s) >= 40 {
+		s = removeFromQuestionList(s, 0)
+	}
+	return s
 }

@@ -1,0 +1,18 @@
+[Unit]
+Description=Proxy NDP Daemon
+Wants=network-online.target
+After=network.target network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/bin/pndpd config /etc/pndpd/pndpd.conf
+
+DynamicUser=yes
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

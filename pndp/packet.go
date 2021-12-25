@@ -1,14 +1,14 @@
 package pndp
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"net"
-	"strings"
 )
 
 var emptyIpv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-var allNodesIpv6 = []byte{0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}
 
 type payload interface {
 	constructPacket() ([]byte, int)
@@ -115,6 +115,11 @@ func (p *ndpPayload) constructPacket() ([]byte, int) {
 }
 
 func calculateChecksum(h *ipv6Header, payload []byte) uint16 {
+	if payload == nil {
+		return 0x0000
+	} else if len(payload) == 0 {
+		return 0x0000
+	}
 	sumPseudoHeader := checksumAddition(h.srcIP) + checksumAddition(h.dstIP) + checksumAddition([]byte{0x00, h.protocol}) + checksumAddition(h.payloadLen)
 	sumPayload := checksumAddition(payload)
 	sumTotal := sumPayload + sumPseudoHeader
@@ -128,7 +133,7 @@ func checksumAddition(b []byte) uint32 {
 	var sum uint32 = 0
 	for i := 0; i < len(b); i++ {
 		if i%2 == 0 {
-			if len(b) <= i-1 {
+			if len(b)-1 == i {
 				sum += uint32(uint16(b[i])<<8 | uint16(0x0))
 			} else {
 				sum += uint32(uint16(b[i])<<8 | uint16(b[i+1]))
@@ -138,7 +143,41 @@ func checksumAddition(b []byte) uint32 {
 	return sum
 }
 
+func checkPacketChecksum(scrip, dstip, payload []byte) bool {
+	v6, err := newIpv6Header(scrip, dstip)
+	if err != nil {
+		return false
+	}
+
+	packetsum := make([]byte, 2)
+	copy(packetsum, payload[2:4])
+
+	bPayloadLen := make([]byte, 2)
+	binary.BigEndian.PutUint16(bPayloadLen, uint16(len(payload)))
+	v6.payloadLen = bPayloadLen
+
+	payload[2] = 0x0
+	payload[3] = 0x0
+
+	bChecksum := make([]byte, 2)
+	binary.BigEndian.PutUint16(bChecksum, calculateChecksum(v6, payload))
+	if bytes.Equal(packetsum, bChecksum) {
+		if GlobalDebug {
+			fmt.Println("Verified received packet checksum")
+		}
+		return true
+	} else {
+		if GlobalDebug {
+			fmt.Println("Received packet checksum validation failed")
+		}
+		return false
+	}
+}
+
 func isIpv6(ip string) bool {
 	rip := net.ParseIP(ip)
-	return rip != nil && strings.Contains(ip, ":")
+	if rip.To16() == nil {
+		return false
+	}
+	return true
 }

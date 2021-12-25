@@ -15,6 +15,7 @@ type ndpRequest struct {
 	mac              []byte
 	receivedIfaceMac []byte
 	sourceIface      string
+	rawPacket        []byte
 }
 
 type ndpQuestion struct {
