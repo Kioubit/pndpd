@@ -3,19 +3,33 @@ package modules
 var ModuleList []*Module
 
 type Module struct {
-	Name                string
-	Option              string
-	OptionDescription   string
-	CommandLineCallback func([]string)
-	ConfigCallback      func([]string)
+	Name     string
+	Option   []Option
+	Callback func(Callback)
 }
 
-func RegisterModule(name string, option string, description string, commandLineCallback func([]string), configCallback func([]string)) {
+type Option struct {
+	Option      string
+	Description string
+}
+
+type CallbackType int
+
+const (
+	CommandLine CallbackType = 0
+	Config      CallbackType = 1
+)
+
+type Callback struct {
+	CallbackType CallbackType
+	Option       string
+	Arguments    []string
+}
+
+func RegisterModule(name string, option []Option, Callback func(Callback)) {
 	ModuleList = append(ModuleList, &Module{
-		Name:                name,
-		Option:              option,
-		OptionDescription:   description,
-		CommandLineCallback: commandLineCallback,
-		ConfigCallback:      configCallback,
+		Name:     name,
+		Option:   option,
+		Callback: Callback,
 	})
 }

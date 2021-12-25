@@ -56,7 +56,9 @@ func readConfig(dest string) {
 			obj := configResponder{}
 			filter := ""
 			for {
-				scanner.Scan()
+				if !scanner.Scan() {
+					break
+				}
 				line = strings.TrimSpace(scanner.Text())
 				if strings.HasPrefix(line, "iface") {
 					obj.Iface = strings.TrimSpace(strings.TrimPrefix(line, "iface"))
@@ -81,7 +83,9 @@ func readConfig(dest string) {
 			obj := configProxy{}
 			filter := ""
 			for {
-				scanner.Scan()
+				if !scanner.Scan() {
+					break
+				}
 				line = strings.TrimSpace(scanner.Text())
 				if strings.HasPrefix(line, "iface1") {
 					obj.Iface1 = strings.TrimSpace(strings.TrimPrefix(line, "iface1"))
@@ -112,17 +116,26 @@ func readConfig(dest string) {
 			option = strings.TrimSpace(option)
 			if modules.ModuleList != nil {
 				for i := range modules.ModuleList {
-					if (*modules.ModuleList[i]).Option == option {
-						var lines []string
-						for {
-							scanner.Scan()
-							line = strings.TrimSpace(scanner.Text())
-							lines = append(lines, line)
-							if strings.HasPrefix(line, "}") {
-								break
+					for d := range (*modules.ModuleList[i]).Option {
+						if (*modules.ModuleList[i]).Option[d].Option == option {
+							var lines []string
+							for {
+								if !scanner.Scan() {
+									break
+								}
+								line = strings.TrimSpace(scanner.Text())
+								if strings.HasPrefix(line, "}") {
+									break
+								}
+								lines = append(lines, line)
 							}
+							(*modules.ModuleList[i]).Callback(modules.Callback{
+								CallbackType: modules.Config,
+								Option:       option,
+								Arguments:    lines,
+							})
+							return
 						}
-						(*modules.ModuleList[i]).ConfigCallback(lines)
 					}
 				}
 			}

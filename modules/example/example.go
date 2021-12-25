@@ -7,19 +7,29 @@ import (
 
 // This is an example module that is not imported by the main program
 func init() {
-	modules.RegisterModule("Example", "example", "example <parameter 1> <parameter 2>", commandLineRead, configRead)
+	option := []modules.Option{{
+		Option:      "command1",
+		Description: "This is the usage description for command1",
+	}, {
+		Option:      "command2",
+		Description: "This is the usage description for command2",
+	},
+	}
+	modules.RegisterModule("Example", option, callback)
 }
 
-func configRead(s []string) {
-	// Prints out the contents of the config file that are relevant for this module (that are inside the example{} option)
-	for _, n := range s {
-		fmt.Println(n)
-	}
-}
+func callback(callback modules.Callback) {
+	if callback.CallbackType == modules.CommandLine {
+		// The command registered by the module has been run in the commandline
+		// "arguments" contains the os.Args[] passed to the program after the command registered by this module
+		fmt.Println("Command: ", callback.Option)
+		fmt.Println(callback.Arguments)
 
-func commandLineRead(s []string) {
-	// Prints out the command line options given to the program if the command starts with "example"
-	for _, n := range s {
-		fmt.Println(n)
+	} else {
+		// The command registered by the module was found in the config file
+		// "arguments" contains the lines between the curly braces
+		fmt.Println("Command: ", callback.Option)
+		fmt.Println(callback.Arguments)
 	}
+	fmt.Println()
 }

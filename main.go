@@ -20,7 +20,7 @@ func WaitForSignal() {
 func main() {
 	fmt.Println("PNDPD Version 1.0 - Kioubit 2021")
 	if modules.ModuleList != nil {
-		fmt.Print("Loaded Modules: ")
+		fmt.Print("Loaded Modules: Core ")
 		for i := range modules.ModuleList {
 			fmt.Print((*modules.ModuleList[i]).Name + " ")
 		}
@@ -56,9 +56,15 @@ func main() {
 		readConfig(os.Args[2])
 	default:
 		for i := range modules.ModuleList {
-			if (*modules.ModuleList[i]).Option == os.Args[1] {
-				(*modules.ModuleList[i]).CommandLineCallback(os.Args)
-				return
+			for d := range (*modules.ModuleList[i]).Option {
+				if (*modules.ModuleList[i]).Option[d].Option == os.Args[1] {
+					(*modules.ModuleList[i]).Callback(modules.Callback{
+						CallbackType: modules.CommandLine,
+						Option:       os.Args[1],
+						Arguments:    os.Args[1:],
+					})
+					return
+				}
 			}
 		}
 		printUsage()
@@ -68,9 +74,14 @@ func main() {
 }
 
 func printUsage() {
+	fmt.Println("More options and additional documentation in the example config file")
 	fmt.Println("Usage:")
 	fmt.Println("pndpd config <path to file>")
 	fmt.Println("pndpd respond <interface> <optional whitelist of CIDRs separated by a semicolon>")
 	fmt.Println("pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>")
-	fmt.Println("More options and additional documentation in the example config file")
+	for i := range modules.ModuleList {
+		for d := range (*modules.ModuleList[i]).Option {
+			fmt.Println((*modules.ModuleList[i]).Option[d].Description)
+		}
+	}
 }
