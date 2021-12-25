@@ -7,7 +7,24 @@
 - Optionally determine whitelist automatically based on the IPs assigned to the interfaces 
 - Permissions required: root or CAP_NET_RAW
 
-## Usage
+## Installing & Updating
+
+1) Download the latest release from the releases page and move the binary to the ``/urs/bin/`` 
+2) For systemd users: Install the service
+```` 
+wget https://git.dn42.dev/Kioubit/Pndpd/src/branch/master/pndpd.service
+mv pndpd.service /usr/lib/systemd/system/
+systemctl enable pndpd.service
+```` 
+3) Download and install the config file
+```` 
+wget https://git.dn42.dev/Kioubit/Pndpd/src/branch/master/pndpd.conf
+mkdir -p /etc/pndpd/
+mv pndpd.conf /etc/pndpd/
+````
+4) Edit the config at ``/etc/pndpd/pndpd.conf`` and then start the service using ``service pndpd start``
+
+## Manual Usage
 ```` 
 pndpd config <path to file>
 pndpd respond <interface> <optional whitelist of CIDRs separated by a semicolon>
