@@ -1,24 +1,25 @@
 # PNDPD - NDP Responder + Proxy
 ## Features
-- Efficiently process incoming packets using bpf (which runs in the kernel)
+- **Efficiently** process incoming packets using bpf (which runs in the kernel)
 - Respond to all NDP solicitations on an interface
-- Respond to NDP solicitations for whitelisted addresses on an interface
-- Proxy NDP between interfaces with an optional whitelist
-- Optionally determine whitelist automatically based on the IPs assigned to the interfaces 
+- **Respond** to NDP solicitations for whitelisted addresses on an interface
+- **Proxy** NDP between interfaces with an optional whitelist
+- Optionally determine whitelist **automatically** based on the IPs assigned to the interfaces 
 - Permissions required: root or CAP_NET_RAW
+- Easily expandable with modules
 
 ## Installing & Updating
 
-1) Download the latest release from the releases page and move the binary to the ``/urs/bin/`` 
-2) For systemd users: Install the service
+1) Download the latest release from the releases page and move the binary to the ``/urs/bin/`` directory
+2) For systemd users: Install the service unit file
 ```` 
-wget https://git.dn42.dev/Kioubit/Pndpd/src/branch/master/pndpd.service
+wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.service
 mv pndpd.service /usr/lib/systemd/system/
 systemctl enable pndpd.service
 ```` 
 3) Download and install the config file
 ```` 
-wget https://git.dn42.dev/Kioubit/Pndpd/src/branch/master/pndpd.conf
+wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.conf
 mkdir -p /etc/pndpd/
 mv pndpd.conf /etc/pndpd/
 ````
