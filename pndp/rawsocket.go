@@ -61,6 +61,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	}
 	go func() {
 		<-stopChan
+		setAllMulti(fd, iface, false)
 		_ = syscall.Close(fd)
 		stopWG.Done() // syscall.read does not release when the file descriptor is closed
 	}()
@@ -76,6 +77,8 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	if err != nil {
 		panic(err.Error())
 	}
+
+	setAllMulti(fd, iface, true)
 
 	var protocolNo uint32
 	if requestType == ndp_SOL {
@@ -161,5 +164,30 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			sourceIface:      iface,
 			rawPacket:        buf[:numRead],
 		}
+	}
+}
+
+type iflags struct {
+	name  [syscall.IFNAMSIZ]byte
+	flags uint16
+}
+
+func setAllMulti(fd int, iface string, enable bool) {
+	var ifl iflags
+	copy(ifl.name[:], []byte(iface))
+	_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
+	if ep != 0 {
+		panic(ep)
+	}
+
+	if enable {
+		ifl.flags |= uint16(syscall.IFF_ALLMULTI)
+	} else {
+		ifl.flags &^= uint16(syscall.IFF_ALLMULTI)
+	}
+
+	_, _, ep = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
+	if ep != 0 {
+		panic(ep)
 	}
 }

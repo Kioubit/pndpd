@@ -10,8 +10,8 @@ RestartSec=5s
 ExecStart=/usr/bin/pndpd config /etc/pndpd/pndpd.conf
 
 DynamicUser=yes
-AmbientCapabilities=CAP_NET_RAW
-CapabilityBoundingSet=
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
 ProtectHome=yes
 
 [Install]
