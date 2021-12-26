@@ -10,20 +10,21 @@
 
 ## Installing & Updating
 
-1) Download the latest release from the releases page and move the binary to the ``/urs/bin/`` directory
-2) For systemd users: Install the service unit file
+1) Download the latest release from the releases page and move the binary to the ``/urs/bin/`` directory under the filename ``pndpd``.
+2) Allow executing the file by running ``chmod +x /usr/bin/pndpd``
+3) **For systemd users:** Install the service unit file
 ```` 
 wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.service
 mv pndpd.service /usr/lib/systemd/system/
 systemctl enable pndpd.service
 ```` 
-3) Download and install the config file
+4) Download and install the config file
 ```` 
 wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.conf
 mkdir -p /etc/pndpd/
 mv pndpd.conf /etc/pndpd/
 ````
-4) Edit the config at ``/etc/pndpd/pndpd.conf`` and then start the service using ``service pndpd start``
+5) Edit the config at ``/etc/pndpd/pndpd.conf`` and then start the service using ``service pndpd start``
 
 ## Manual Usage
 ```` 
@@ -31,7 +32,7 @@ pndpd config <path to file>
 pndpd respond <interface> <optional whitelist of CIDRs separated by a semicolon>
 pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>
 ````
-More options and additional documentation in the example config file (pndpd.conf).
+More options and additional documentation in the example config file (``pndpd.conf ``).
 
 ## Developing
 ### Adding Modules 
