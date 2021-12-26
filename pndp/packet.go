@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 )
 
 var emptyIpv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -176,8 +177,5 @@ func checkPacketChecksum(scrip, dstip, payload []byte) bool {
 
 func isIpv6(ip string) bool {
 	rip := net.ParseIP(ip)
-	if rip.To16() == nil {
-		return false
-	}
-	return true
+	return rip != nil && strings.Contains(ip, ":")
 }
