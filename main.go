@@ -18,7 +18,7 @@ func WaitForSignal() {
 }
 
 func main() {
-	fmt.Println("PNDPD Version 1.0 - Kioubit 2021")
+	fmt.Println("PNDPD Version 1.1 - Kioubit 2021")
 	if modules.ModuleList != nil {
 		fmt.Print("Loaded Modules: Core ")
 		for i := range modules.ModuleList {
