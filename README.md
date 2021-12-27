@@ -27,7 +27,7 @@ wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.conf -P /etc/p
 ## Manual Usage
 ```` 
 pndpd config <path to file>
-pndpd respond <interface> <optional whitelist of CIDRs separated by a semicolon>
+pndpd responder <interface> <optional whitelist of CIDRs separated by a semicolon>
 pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>
 ````
 More options and additional documentation in the example config file (``pndpd.conf ``).

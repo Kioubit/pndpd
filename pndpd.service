@@ -7,7 +7,7 @@ After=network.target network-online.target
 Type=simple
 Restart=on-failure
 RestartSec=5s
-ExecStart=/usr/bin/pndpd config /etc/pndpd/pndpd.conf
+ExecStart=/usr/local/bin/pndpd config /etc/pndpd/pndpd.conf
 
 DynamicUser=yes
 AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
