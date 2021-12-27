@@ -11,7 +11,7 @@ import (
 
 // WaitForSignal Waits (blocking) for the program to be interrupted by the OS
 func WaitForSignal() {
-	var sigCh = make(chan os.Signal)
+	var sigCh = make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	<-sigCh
 	close(sigCh)
