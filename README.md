@@ -10,19 +10,17 @@
 
 ## Installing & Updating
 
-1) Download the latest release from the releases page and move the binary to the ``/urs/bin/`` directory under the filename ``pndpd``.
-2) Allow executing the file by running ``chmod +x /usr/bin/pndpd``
+1) Download the latest release from the releases page and move the binary to the ``/usr/local/bin/`` directory under the filename ``pndpd``.
+2) Allow executing the file by running ``chmod +x /usr/local/bin/pndpd``
 3) **For systemd users:** Install the service unit file
 ```` 
-wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.service
-mv pndpd.service /usr/lib/systemd/system/
+wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.service -P /etc/systemd/system/
 systemctl enable pndpd.service
 ```` 
 4) Download and install the config file
 ```` 
-wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.conf
-mkdir -p /etc/pndpd/
-mv pndpd.conf /etc/pndpd/
+mkdir -p /etc/pndpd
+wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.conf -P /etc/pndpd/
 ````
 5) Edit the config at ``/etc/pndpd/pndpd.conf`` and then start the service using ``service pndpd start``
 
