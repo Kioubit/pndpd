@@ -144,12 +144,7 @@ func checksumAddition(b []byte) uint32 {
 	return sum
 }
 
-func checkPacketChecksum(scrip, dstip, payload []byte) bool {
-	v6, err := newIpv6Header(scrip, dstip)
-	if err != nil {
-		return false
-	}
-
+func checkPacketChecksum(v6 *ipv6Header, payload []byte) bool {
 	packetsum := make([]byte, 2)
 	copy(packetsum, payload[2:4])
 
@@ -163,9 +158,6 @@ func checkPacketChecksum(scrip, dstip, payload []byte) bool {
 	bChecksum := make([]byte, 2)
 	binary.BigEndian.PutUint16(bChecksum, calculateChecksum(v6, payload))
 	if bytes.Equal(packetsum, bChecksum) {
-		if GlobalDebug {
-			fmt.Println("Verified received packet checksum")
-		}
 		return true
 	} else {
 		if GlobalDebug {

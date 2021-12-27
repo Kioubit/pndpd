@@ -35,7 +35,9 @@ type ProxyObj struct {
 // With the optional autosenseInterface argument, the whitelist is configured based on the addresses assigned to the interface specified. This works even if the IP addresses change frequently.
 // Start() must be called on the object to actually start responding
 func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) *ResponderObj {
-	fmt.Println("WARNING: You should use a whitelist for the responder unless you really know what you are doing")
+	if filter == nil {
+		fmt.Println("WARNING: You should use a whitelist for the responder unless you really know what you are doing")
+	}
 	var s sync.WaitGroup
 	return &ResponderObj{
 		stopChan:  make(chan struct{}),
@@ -146,7 +148,7 @@ func (obj *ProxyObj) Stop() bool {
 	}
 }
 
-// ParseFilter Helper Function to Parse a string of CIDRs separated by a semicolon as a Whitelist for SimpleRespond
+// ParseFilter Helper Function to Parse a string of CIDRs separated by a semicolon as a Whitelist
 func ParseFilter(f string) []*net.IPNet {
 	if f == "" {
 		return nil

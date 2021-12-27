@@ -8,14 +8,12 @@ const (
 )
 
 type ndpRequest struct {
-	requestType      ndpType
-	srcIP            []byte
-	answeringForIP   []byte
-	dstIP            []byte
-	mac              []byte
-	receivedIfaceMac []byte
-	sourceIface      string
-	rawPacket        []byte
+	requestType    ndpType
+	srcIP          []byte
+	answeringForIP []byte
+	dstIP          []byte
+	sourceIface    string
+	rawPacket      []byte
 }
 
 type ndpQuestion struct {
