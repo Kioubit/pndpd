@@ -3,14 +3,17 @@ package modules
 var ModuleList []*Module
 
 type Module struct {
-	Name     string
-	Option   []Option
-	Callback func(Callback)
+	Name             string
+	Commands         []Command
+	InitCallback     func(CallbackInfo)
+	CompleteCallback func()
+	ShutdownCallback func()
 }
 
-type Option struct {
-	Option      string
-	Description string
+type Command struct {
+	CommandText    string
+	Description    string
+	BlockTerminate bool
 }
 
 type CallbackType int
@@ -20,16 +23,63 @@ const (
 	Config      CallbackType = 1
 )
 
-type Callback struct {
+type CallbackInfo struct {
 	CallbackType CallbackType
-	Option       string
+	Command      Command
 	Arguments    []string
 }
 
-func RegisterModule(name string, option []Option, Callback func(Callback)) {
+func RegisterModule(name string, commands []Command, initCallback func(CallbackInfo), CompleteCallback func(), shutdownCallback func()) {
 	ModuleList = append(ModuleList, &Module{
-		Name:     name,
-		Option:   option,
-		Callback: Callback,
+		Name:             name,
+		Commands:         commands,
+		InitCallback:     initCallback,
+		CompleteCallback: CompleteCallback,
+		ShutdownCallback: shutdownCallback,
 	})
+}
+
+func GetCommand(target string) (*Module, Command) {
+	for i := range ModuleList {
+		for _, command := range ModuleList[i].Commands {
+			if command.CommandText == target {
+				return ModuleList[i], command
+			}
+		}
+	}
+	return nil, Command{}
+}
+
+var runningModules []*Module
+
+func ExecuteInit(module *Module, info CallbackInfo) {
+	if info.Command.BlockTerminate {
+		found := false
+		for _, n := range runningModules {
+			if n == module {
+				found = true
+				break
+			}
+		}
+		if !found {
+			runningModules = append(runningModules, module)
+		}
+	}
+	module.InitCallback(info)
+}
+
+func ExecuteComplete() {
+	for i := range runningModules {
+		(*runningModules[i]).CompleteCallback()
+	}
+}
+
+func ShutdownAll() {
+	for i := range runningModules {
+		(*runningModules[i]).ShutdownCallback()
+	}
+}
+
+func ExistsBlockingModule() bool {
+	return len(runningModules) != 0
 }
