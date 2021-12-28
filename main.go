@@ -13,16 +13,10 @@ import (
 	_ "pndpd/modules/userInterface"
 )
 
-// waitForSignal Waits (blocking) for the program to be interrupted by the OS
-func waitForSignal() {
-	var sigCh = make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-	<-sigCh
-	close(sigCh)
-}
+var Version = "Development"
 
 func main() {
-	fmt.Println("PNDPD Version 1.2.1 - Kioubit 2021")
+	fmt.Println("PNDPD Version", Version, "- Kioubit 2021")
 
 	if len(os.Args) <= 2 {
 		printUsage()
@@ -63,4 +57,12 @@ func printUsage() {
 			}
 		}
 	}
+}
+
+// waitForSignal Waits (blocking) for the program to be interrupted by the OS
+func waitForSignal() {
+	var sigCh = make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	<-sigCh
+	close(sigCh)
 }

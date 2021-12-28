@@ -33,6 +33,13 @@ pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by 
 More options and additional documentation in the example config file (``pndpd.conf ``).
 
 ## Developing
+
+### Building
+For building, the version of go needs to be installed that is specified in the go.mod file. A makefile is available. Optionally adjust the modules variable to include/exclude modules from the modules directory.
+````
+make build
+make release
+```` 
 ### Adding Modules 
 It is easy to add functionality to PNDPD. For additions outside the core functionality you only need to keep the following methods in mind:
 ```` 
