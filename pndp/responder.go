@@ -14,7 +14,6 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 
 	var ndpQuestionsList = make([]*ndpQuestion, 0, 40)
 	var _, linkLocalSpace, _ = net.ParseCIDR("fe80::/10")
-	var _, ulaSpace, _ = net.ParseCIDR("fc00::/7")
 
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
@@ -33,28 +32,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		panic(err.Error())
 	}
 
-	var result = emptyIpv6
-	ifaceaddrs, err := respondIface.Addrs()
-
-	for _, n := range ifaceaddrs {
-		tip, _, err := net.ParseCIDR(n.String())
-		if err != nil {
-			break
-		}
-		var haveUla = false
-		if isIpv6(tip.String()) {
-			if tip.IsGlobalUnicast() {
-				haveUla = true
-				result = tip
-
-				if !ulaSpace.Contains(tip) {
-					break
-				}
-			} else if tip.IsLinkLocalUnicast() && !haveUla {
-				result = tip
-			}
-		}
-	}
+	var result = selectSourceIP(respondIface)
 
 	for {
 		var req *ndpRequest
@@ -94,6 +72,8 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 
 		// Auto-sense
 		if autoSense != "" {
+			//TODO Future work: Use another sub goroutine to monitor the interface instead of checking here
+			result = selectSourceIP(respondIface)
 			autoiface, err := net.InterfaceByName(autoSense)
 			if err != nil {
 				panic(err)
@@ -226,4 +206,34 @@ func cleanupQuestionList(s []*ndpQuestion) []*ndpQuestion {
 		s = removeFromQuestionList(s, 0)
 	}
 	return s
+}
+
+func selectSourceIP(iface *net.Interface) []byte {
+	var _, ulaSpace, _ = net.ParseCIDR("fc00::/7")
+	var result = emptyIpv6
+	ifaceaddrs, err := iface.Addrs()
+	if err != nil {
+		return result
+	}
+
+	for _, n := range ifaceaddrs {
+		tip, _, err := net.ParseCIDR(n.String())
+		if err != nil {
+			break
+		}
+		var haveUla = false
+		if isIpv6(tip.String()) {
+			if tip.IsGlobalUnicast() {
+				haveUla = true
+				result = tip
+
+				if !ulaSpace.Contains(tip) {
+					break
+				}
+			} else if tip.IsLinkLocalUnicast() && !haveUla {
+				result = tip
+			}
+		}
+	}
+	return result
 }
