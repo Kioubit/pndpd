@@ -117,6 +117,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			continue
 		}
 
+		// Auto-sense
 		if autoSense != "" {
 			autoiface, err := net.InterfaceByName(autoSense)
 			if err != nil {
@@ -125,11 +126,11 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			autoifaceaddrs, err := autoiface.Addrs()
 
 			for _, l := range autoifaceaddrs {
-				_, anet, err := net.ParseCIDR(l.String())
+				testIP, anet, err := net.ParseCIDR(l.String())
 				if err != nil {
 					break
 				}
-				if isIpv6(anet.String()) {
+				if isIpv6(testIP.String()) {
 					filter = append(filter, anet)
 				}
 			}
