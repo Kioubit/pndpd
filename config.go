@@ -37,7 +37,7 @@ func readConfig(dest string) {
 		if strings.HasSuffix(line, "{") {
 			option := strings.TrimSuffix(strings.TrimSpace(line), "{")
 			option = strings.TrimSpace(option)
-			module, command := modules.GetCommand(option)
+			module, command := modules.GetCommand(option, modules.Config)
 			var lines = make([]string, 0)
 			if module != nil {
 				for {

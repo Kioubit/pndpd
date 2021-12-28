@@ -1,3 +1,6 @@
+//go:build mod_example
+// +build mod_example
+
 package example
 
 import (
@@ -5,16 +8,20 @@ import (
 	"pndpd/modules"
 )
 
-// This is an example module that is not imported by the main program
+// This is an example module
 func init() {
 	commands := []modules.Command{{
-		CommandText:    "command1",
-		Description:    "This is the usage description for command1",
-		BlockTerminate: true,
+		CommandText:        "command1",
+		Description:        "This is the usage description for command1",
+		BlockTerminate:     true,
+		CommandLineEnabled: true,
+		ConfigEnabled:      true,
 	}, {
-		CommandText:    "command2",
-		Description:    "This is the usage description for command2",
-		BlockTerminate: false,
+		CommandText:        "command2",
+		Description:        "This is the usage description for command2",
+		BlockTerminate:     false,
+		CommandLineEnabled: false,
+		ConfigEnabled:      true,
 	},
 	}
 	modules.RegisterModule("Example", commands, initCallback, completeCallback, shutdownCallback)

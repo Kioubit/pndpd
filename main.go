@@ -5,8 +5,12 @@ import (
 	"os"
 	"os/signal"
 	"pndpd/modules"
-	_ "pndpd/modules/userInterface"
 	"syscall"
+)
+import (
+	// Modules
+	_ "pndpd/modules/example"
+	_ "pndpd/modules/userInterface"
 )
 
 // waitForSignal Waits (blocking) for the program to be interrupted by the OS
@@ -29,7 +33,7 @@ func main() {
 	case "config":
 		readConfig(os.Args[2])
 	default:
-		module, command := modules.GetCommand(os.Args[1])
+		module, command := modules.GetCommand(os.Args[1], modules.CommandLine)
 		if module != nil {
 			modules.ExecuteInit(module, modules.CallbackInfo{
 				CallbackType: modules.CommandLine,
@@ -54,7 +58,9 @@ func printUsage() {
 	fmt.Println("pndpd config <path to file>")
 	for i := range modules.ModuleList {
 		for d := range (*modules.ModuleList[i]).Commands {
-			fmt.Println("pndpd", (*modules.ModuleList[i]).Commands[d].Description)
+			if (*modules.ModuleList[i]).Commands[d].CommandLineEnabled {
+				fmt.Println("pndpd", (*modules.ModuleList[i]).Commands[d].Description)
+			}
 		}
 	}
 }

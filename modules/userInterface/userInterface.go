@@ -1,3 +1,6 @@
+//go:build !noUserInterface
+// +build !noUserInterface
+
 package userInterface
 
 import (
@@ -9,17 +12,23 @@ import (
 
 func init() {
 	commands := []modules.Command{{
-		CommandText:    "proxy",
-		Description:    "proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>",
-		BlockTerminate: true,
+		CommandText:        "proxy",
+		Description:        "proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>",
+		BlockTerminate:     true,
+		ConfigEnabled:      true,
+		CommandLineEnabled: true,
 	}, {
-		CommandText:    "responder",
-		Description:    "responder <interface> <optional whitelist of CIDRs separated by a semicolon>",
-		BlockTerminate: true,
+		CommandText:        "responder",
+		Description:        "responder <interface> <optional whitelist of CIDRs separated by a semicolon>",
+		BlockTerminate:     true,
+		ConfigEnabled:      true,
+		CommandLineEnabled: true,
 	}, {
-		CommandText:    "modules",
-		Description:    "modules available - list available modules",
-		BlockTerminate: false,
+		CommandText:        "modules",
+		Description:        "modules available - list available modules",
+		BlockTerminate:     false,
+		ConfigEnabled:      false,
+		CommandLineEnabled: true,
 	}}
 	modules.RegisterModule("Core", commands, initCallback, completeCallback, shutdownCallback)
 }

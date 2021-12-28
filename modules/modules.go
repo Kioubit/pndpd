@@ -11,9 +11,11 @@ type Module struct {
 }
 
 type Command struct {
-	CommandText    string
-	Description    string
-	BlockTerminate bool
+	CommandText        string
+	Description        string
+	BlockTerminate     bool
+	CommandLineEnabled bool
+	ConfigEnabled      bool
 }
 
 type CallbackType int
@@ -39,11 +41,17 @@ func RegisterModule(name string, commands []Command, initCallback func(CallbackI
 	})
 }
 
-func GetCommand(target string) (*Module, Command) {
+func GetCommand(target string, scope CallbackType) (*Module, Command) {
 	for i := range ModuleList {
 		for _, command := range ModuleList[i].Commands {
 			if command.CommandText == target {
-				return ModuleList[i], command
+				if scope == CommandLine && command.CommandLineEnabled {
+					return ModuleList[i], command
+				}
+				if scope == Config && command.ConfigEnabled {
+					return ModuleList[i], command
+				}
+				return nil, Command{}
 			}
 		}
 	}
