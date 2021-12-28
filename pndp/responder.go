@@ -84,36 +84,11 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			continue
 		}
 
-		if req.requestType == ndp_ADV {
-			if (req.rawPacket[78] != 0x02) || (req.rawPacket[79] != 0x01) {
-				if GlobalDebug {
-					fmt.Println("Dropping Advertisement packet without target Source address set")
-				}
-				continue
-			}
-			if req.rawPacket[58] == 0x0 {
-				if GlobalDebug {
-					fmt.Println("Dropping Advertisement packet without any NDP flags set")
-				}
-				continue
-			}
-		} else {
-			if (req.rawPacket[78] != 0x01) || (req.rawPacket[79] != 0x01) {
-				if GlobalDebug {
-					fmt.Println("Dropping Solicitation packet without Source address set")
-				}
-				continue
-			}
-		}
-
 		v6Header, err := newIpv6Header(req.srcIP, req.dstIP)
 		if err != nil {
 			continue
 		}
-		if !checkPacketChecksum(v6Header, req.rawPacket[54:]) {
-			if GlobalDebug {
-				fmt.Println("Dropping packet because of invalid checksum")
-			}
+		if !checkPacketChecksum(v6Header, req.payload) {
 			continue
 		}
 
@@ -216,23 +191,19 @@ func getAddressFromQuestionListRetry(targetIP []byte, ndpQuestionChan chan *ndpQ
 		return result, true
 	}
 
-	hasBuffered := true
 	gotBuffered := false
-	for hasBuffered {
-		select {
-		case q := <-ndpQuestionChan:
-			ndpQuestionsList = append(ndpQuestionsList, q)
-			gotBuffered = true
-		default:
-			hasBuffered = false
-		}
+	select {
+	case q := <-ndpQuestionChan:
+		ndpQuestionsList = append(ndpQuestionsList, q)
+		gotBuffered = true
+	default:
 	}
 
 	if gotBuffered {
 		result, success = getAddressFromQuestionList(targetIP, ndpQuestionsList)
 	}
 
-	return result, success
+	return nil, false
 }
 
 func getAddressFromQuestionList(targetIP []byte, ndpQuestionsList []*ndpQuestion) ([]byte, bool) {

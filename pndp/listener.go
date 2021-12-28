@@ -75,8 +75,8 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		bpf.LoadAbsolute{Off: 54, Size: 1},
 		// Jump to the drop packet instruction if Type is not Neighbor Solicitation / Advertisement.
 		bpf.JumpIf{Cond: bpf.JumpNotEqual, Val: protocolNo, SkipTrue: 1},
-		// Verdict is: send up to 4096 bytes of the packet to userspace.
-		bpf.RetConstant{Val: 4096},
+		// Verdict is: send up to 86 bytes of the packet to userspace.
+		bpf.RetConstant{Val: 86},
 		// Verdict is: "ignore packet."
 		bpf.RetConstant{Val: 0},
 	}
@@ -87,12 +87,12 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	}
 
 	for {
-		buf := make([]byte, 4096)
+		buf := make([]byte, 86)
 		numRead, err := syscall.Read(fd, buf)
 		if err != nil {
 			panic(err)
 		}
-		if numRead < 86 {
+		if numRead < 78 {
 			if GlobalDebug {
 				fmt.Println("Dropping packet since it does not meet the minimum length requirement")
 				fmt.Printf("% X\n", buf[:numRead])
@@ -115,8 +115,6 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 				fmt.Println("NDP Flags")
 				fmt.Printf("% X\n", buf[58])
 			}
-			fmt.Println("NDP MAC:")
-			fmt.Printf("% X\n", buf[80:86])
 			fmt.Println()
 		}
 
@@ -127,13 +125,22 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			continue
 		}
 
+		if requestType == ndp_ADV {
+			if buf[58] == 0x0 {
+				if GlobalDebug {
+					fmt.Println("Dropping Advertisement packet without any NDP flags set")
+				}
+				continue
+			}
+		}
+
 		responder <- &ndpRequest{
 			requestType:    requestType,
 			srcIP:          buf[22:38],
 			dstIP:          buf[38:54],
 			answeringForIP: buf[62:78],
+			payload:        buf[54:],
 			sourceIface:    iface,
-			rawPacket:      buf[:numRead],
 		}
 	}
 }

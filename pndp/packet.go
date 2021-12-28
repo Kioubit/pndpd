@@ -135,7 +135,7 @@ func checksumAddition(b []byte) uint32 {
 	for i := 0; i < len(b); i++ {
 		if i%2 == 0 {
 			if len(b)-1 == i {
-				sum += uint32(uint16(b[i])<<8 | uint16(0x0))
+				sum += uint32(uint16(b[i])<<8 | uint16(0x00))
 			} else {
 				sum += uint32(uint16(b[i])<<8 | uint16(b[i+1]))
 			}

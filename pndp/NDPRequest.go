@@ -13,7 +13,7 @@ type ndpRequest struct {
 	answeringForIP []byte
 	dstIP          []byte
 	sourceIface    string
-	rawPacket      []byte
+	payload        []byte
 }
 
 type ndpQuestion struct {
