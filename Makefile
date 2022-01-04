@@ -3,7 +3,7 @@
 BINARY=pndpd
 MODULES=
 VERSION=`git describe --tags`
-LDFLAGS=-ldflags "-X main.Version=${VERSION} -X main.Build=${BUILD}"
+LDFLAGS=-ldflags "-X main.Version=${VERSION}"
 
 build:
 	go build -tags=${MODULES} -o bin/${BINARY} .
