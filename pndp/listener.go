@@ -34,7 +34,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	}
 	go func() {
 		<-stopChan
-		setAllMulti(fd, iface, false)
+		setPromisc(fd, iface, false)
 		_ = syscall.Close(fd)
 		stopWG.Done() // syscall.read does not release when the file descriptor is closed
 	}()
@@ -51,7 +51,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		panic(err.Error())
 	}
 
-	setAllMulti(fd, iface, true)
+	setPromisc(fd, iface, true)
 
 	var protocolNo uint32
 	if requestType == ndp_SOL {

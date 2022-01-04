@@ -37,7 +37,7 @@ type iflags struct {
 	flags uint16
 }
 
-func setAllMulti(fd int, iface string, enable bool) {
+func setPromisc(fd int, iface string, enable bool) {
 	var ifl iflags
 	copy(ifl.name[:], []byte(iface))
 	_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
@@ -46,9 +46,9 @@ func setAllMulti(fd int, iface string, enable bool) {
 	}
 
 	if enable {
-		ifl.flags |= uint16(syscall.IFF_ALLMULTI)
+		ifl.flags |= uint16(syscall.IFF_PROMISC)
 	} else {
-		ifl.flags &^= uint16(syscall.IFF_ALLMULTI)
+		ifl.flags &^= uint16(syscall.IFF_PROMISC)
 	}
 
 	_, _, ep = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
