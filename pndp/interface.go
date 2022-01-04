@@ -3,6 +3,7 @@ package pndp
 import (
 	"golang.org/x/net/bpf"
 	"golang.org/x/sys/unix"
+	"net"
 	"syscall"
 	"unsafe"
 )
@@ -38,6 +39,7 @@ type iflags struct {
 }
 
 func setPromisc(fd int, iface string, enable bool) {
+	//TODO re-test ALLMULTI
 	var ifl iflags
 	copy(ifl.name[:], []byte(iface))
 	_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
@@ -55,4 +57,28 @@ func setPromisc(fd int, iface string, enable bool) {
 	if ep != 0 {
 		panic(ep)
 	}
+
+	// Also set Sockopt to promisc
+	intf, err := net.InterfaceByName(iface)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	mreq := unix.PacketMreq{
+		Ifindex: int32(intf.Index),
+		Type:    unix.PACKET_MR_PROMISC,
+	}
+
+	var opt int
+	if enable {
+		opt = unix.PACKET_ADD_MEMBERSHIP
+	} else {
+		opt = unix.PACKET_DROP_MEMBERSHIP
+	}
+
+	err = unix.SetsockoptPacketMreq(fd, unix.SOL_PACKET, opt, &mreq)
+	if err != nil {
+		panic(err)
+	}
+
 }
