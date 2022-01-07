@@ -38,34 +38,46 @@ type iflags struct {
 	flags uint16
 }
 
-func setPromisc(fd int, iface string, enable bool) {
+func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 	//TODO re-test ALLMULTI
-	var ifl iflags
-	copy(ifl.name[:], []byte(iface))
-	_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
-	if ep != 0 {
-		panic(ep)
-	}
 
-	if enable {
-		ifl.flags |= uint16(syscall.IFF_PROMISC)
-	} else {
-		ifl.flags &^= uint16(syscall.IFF_PROMISC)
-	}
+	// -------------------------- Interface flags --------------------------
+	if withInterfaceFlags {
+		tFD, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_DGRAM, 0)
+		if err != nil {
+			panic(err)
+		}
 
-	_, _, ep = syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
-	if ep != 0 {
-		panic(ep)
-	}
+		var ifl iflags
+		copy(ifl.name[:], []byte(iface))
+		_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tFD), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
+		if ep != 0 {
+			panic(ep)
+		}
 
-	// Also set Sockopt to promisc
-	intf, err := net.InterfaceByName(iface)
+		if enable {
+			ifl.flags |= uint16(syscall.IFF_PROMISC)
+		} else {
+			ifl.flags &^= uint16(syscall.IFF_PROMISC)
+		}
+
+		_, _, ep = syscall.Syscall(syscall.SYS_IOCTL, uintptr(tFD), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
+		if ep != 0 {
+			panic(ep)
+		}
+
+		_ = syscall.Close(tFD)
+	}
+	// ---------------------------------------------------------------------
+
+	// -------------------------- Socket Options ---------------------------
+	iFace, err := net.InterfaceByName(iface)
 	if err != nil {
 		panic(err.Error())
 	}
 
-	mreq := unix.PacketMreq{
-		Ifindex: int32(intf.Index),
+	mReq := unix.PacketMreq{
+		Ifindex: int32(iFace.Index),
 		Type:    unix.PACKET_MR_PROMISC,
 	}
 
@@ -76,9 +88,9 @@ func setPromisc(fd int, iface string, enable bool) {
 		opt = unix.PACKET_DROP_MEMBERSHIP
 	}
 
-	err = unix.SetsockoptPacketMreq(fd, unix.SOL_PACKET, opt, &mreq)
+	err = unix.SetsockoptPacketMreq(fd, unix.SOL_PACKET, opt, &mReq)
 	if err != nil {
 		panic(err)
 	}
-
+	// ---------------------------------------------------------------------
 }

@@ -10,7 +10,7 @@
 
 ## Installing & Updating
 
-1) Download the latest release from the releases page and move the binary to the ``/usr/local/bin/`` directory under the filename ``pndpd``.
+1) Download the latest release from the [releases page](https://github.com/Kioubit/pndpd/releases) and move the binary to the ``/usr/local/bin/`` directory under the filename ``pndpd``.
 2) Allow executing the file by running ``chmod +x /usr/local/bin/pndpd``
 3) **For systemd users:** Install the service unit file
 ```` 
