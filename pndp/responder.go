@@ -73,6 +73,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		// Auto-sense
 		if autoSense != "" {
 			//TODO Future work: Use another sub goroutine to monitor the interface instead of checking here
+			filter = make([]*net.IPNet, 0)
 			result = selectSourceIP(respondIface)
 			autoiface, err := net.InterfaceByName(autoSense)
 			if err != nil {

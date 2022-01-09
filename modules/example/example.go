@@ -11,13 +11,13 @@ import (
 // This is an example module
 func init() {
 	commands := []modules.Command{{
-		CommandText:        "command1",
+		CommandText:        "pndpd command1",
 		Description:        "This is the usage description for command1",
 		BlockTerminate:     true,
 		CommandLineEnabled: true,
 		ConfigEnabled:      true,
 	}, {
-		CommandText:        "command2",
+		CommandText:        "pndpd command2",
 		Description:        "This is the usage description for command2",
 		BlockTerminate:     false,
 		CommandLineEnabled: false,

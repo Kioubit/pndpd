@@ -16,7 +16,7 @@ import (
 var Version = "Development"
 
 func main() {
-	fmt.Println("PNDPD Version", Version, "- Kioubit 2021")
+	fmt.Println("PNDPD Version", Version, "- Kioubit 2022")
 
 	if len(os.Args) <= 2 {
 		printUsage()
@@ -53,7 +53,7 @@ func printUsage() {
 	for i := range modules.ModuleList {
 		for d := range (*modules.ModuleList[i]).Commands {
 			if (*modules.ModuleList[i]).Commands[d].CommandLineEnabled {
-				fmt.Println("pndpd", (*modules.ModuleList[i]).Commands[d].Description)
+				fmt.Println((*modules.ModuleList[i]).Commands[d].Description)
 			}
 		}
 	}

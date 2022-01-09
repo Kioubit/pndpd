@@ -5,6 +5,7 @@ package userInterface
 
 import (
 	"fmt"
+	"os"
 	"pndpd/modules"
 	"pndpd/pndp"
 	"strings"
@@ -13,19 +14,19 @@ import (
 func init() {
 	commands := []modules.Command{{
 		CommandText:        "proxy",
-		Description:        "proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>",
+		Description:        "pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>",
 		BlockTerminate:     true,
 		ConfigEnabled:      true,
 		CommandLineEnabled: true,
 	}, {
 		CommandText:        "responder",
-		Description:        "responder <interface> <optional whitelist of CIDRs separated by a semicolon>",
+		Description:        "pndpd responder <interface> <optional whitelist of CIDRs separated by a semicolon>",
 		BlockTerminate:     true,
 		ConfigEnabled:      true,
 		CommandLineEnabled: true,
 	}, {
 		CommandText:        "modules",
-		Description:        "modules available - list available modules",
+		Description:        "pndpd modules available - list available modules",
 		BlockTerminate:     false,
 		ConfigEnabled:      false,
 		CommandLineEnabled: true,
@@ -114,14 +115,23 @@ func initCallback(callback modules.CallbackInfo) {
 				if strings.HasPrefix(n, "filter") {
 					filter += strings.TrimSpace(strings.TrimPrefix(n, "filter")) + ";"
 					if strings.Contains(n, ";") {
-						panic("Invalid config file syntax")
+						showError("config: the use of semicolons is not allowed in the filter arguments")
 					}
 				}
 				if strings.HasPrefix(n, "autosense") {
 					obj.autosense = strings.TrimSpace(strings.TrimPrefix(n, "autosense"))
 				}
+				if strings.Contains(n, "//") {
+					showError("config: comments are not allowed after arguments")
+				}
 			}
 			obj.Filter = strings.TrimSuffix(filter, ";")
+			if obj.autosense != "" && obj.Filter != "" {
+				showError("config: cannot have both a filter and autosense enabled on a proxy object")
+			}
+			if obj.Iface2 == "" || obj.Iface1 == "" {
+				showError("config: two interfaces need to be specified in the config file for a proxy object. (iface1 and iface2 parameters)")
+			}
 			allProxies = append(allProxies, &obj)
 		case "responder":
 			obj := configResponder{}
@@ -133,13 +143,21 @@ func initCallback(callback modules.CallbackInfo) {
 				if strings.HasPrefix(n, "filter") {
 					filter += strings.TrimSpace(strings.TrimPrefix(n, "filter")) + ";"
 					if strings.Contains(n, ";") {
-						panic("Invalid config file syntax")
+						showError("config: the use of semicolons is not allowed in the filter arguments")
 					}
 				}
 				if strings.HasPrefix(n, "autosense") {
 					obj.autosense = strings.TrimSpace(strings.TrimPrefix(n, "autosense"))
 				}
-
+				if obj.autosense != "" && obj.Filter != "" {
+					showError("config: cannot have both a filter and autosense enabled on a responder object")
+				}
+				if obj.Iface == "" {
+					showError("config: interface not specified in the responder object. (iface parameter)")
+				}
+				if strings.Contains(n, "//") {
+					showError("config: comments are not allowed after arguments")
+				}
 			}
 			obj.Filter = strings.TrimSuffix(filter, ";")
 			allResponders = append(allResponders, &obj)
@@ -168,4 +186,10 @@ func shutdownCallback() {
 	for _, n := range allResponders {
 		n.instance.Stop()
 	}
+}
+
+func showError(error string) {
+	fmt.Println(error)
+	fmt.Println("Exiting due to error")
+	os.Exit(1)
 }

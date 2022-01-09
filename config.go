@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"pndpd/modules"
 	"pndpd/pndp"
@@ -13,7 +12,8 @@ import (
 func readConfig(dest string) {
 	file, err := os.Open(dest)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error:", err.Error())
+		os.Exit(1)
 	}
 	defer func(file *os.File) {
 		_ = file.Close()

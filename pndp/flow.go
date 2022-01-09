@@ -35,7 +35,7 @@ type ProxyObj struct {
 // With the optional autosenseInterface argument, the whitelist is configured based on the addresses assigned to the interface specified. This works even if the IP addresses change frequently.
 // Start() must be called on the object to actually start responding
 func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) *ResponderObj {
-	if filter == nil {
+	if filter == nil && autosenseInterface == "" {
 		fmt.Println("WARNING: You should use a whitelist for the responder unless you really know what you are doing")
 	}
 	var s sync.WaitGroup
@@ -59,7 +59,8 @@ func (obj *ResponderObj) start() {
 	}()
 	go respond(obj.iface, requests, ndp_ADV, nil, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
 	go listen(obj.iface, requests, ndp_SOL, obj.stopWG, obj.stopChan)
-	fmt.Println("Started responder instance on interface", obj.iface)
+	fmt.Printf("Started responder instance on interface %s", obj.iface)
+	fmt.Println()
 	<-obj.stopChan
 }
 
@@ -130,7 +131,8 @@ func (obj *ProxyObj) start() {
 	go listen(obj.iface2, req_iface2_adv_iface1, ndp_ADV, obj.stopWG, obj.stopChan)
 	go respond(obj.iface1, req_iface2_adv_iface1, ndp_ADV, out_iface2_sol_questions_iface1_adv, nil, "", obj.stopWG, obj.stopChan)
 
-	fmt.Println("Started Proxy instance for interfaces:", obj.iface1, "and", obj.iface2)
+	fmt.Printf("Started Proxy instance on interfaces %s and %s (if enabled, the whitelist is applied on %s)", obj.iface1, obj.iface2, obj.iface2)
+	fmt.Println()
 	<-obj.stopChan
 }
 
