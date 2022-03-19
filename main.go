@@ -6,14 +6,13 @@ import (
 	"os/signal"
 	"pndpd/modules"
 	"syscall"
-)
-import (
+
 	// Modules
 	_ "pndpd/modules/example"
 	_ "pndpd/modules/userInterface"
 )
 
-var Version = "Development"
+var Version = "Custom_Build"
 
 func main() {
 	fmt.Println("PNDPD Version", Version, "- Kioubit 2022")
