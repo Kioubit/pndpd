@@ -116,21 +116,18 @@ func (p *ndpPayload) constructPacket() ([]byte, int) {
 }
 
 func calculateChecksum(h *ipv6Header, payload []byte) uint16 {
-	if payload == nil {
-		return 0x0000
-	} else if len(payload) == 0 {
+	if payload == nil || len(payload) == 0 {
 		return 0x0000
 	}
-	sumPseudoHeader := checksumAddition(h.srcIP) + checksumAddition(h.dstIP) + checksumAddition([]byte{0x00, h.protocol}) + checksumAddition(h.payloadLen)
-	sumPayload := checksumAddition(payload)
-	sumTotal := sumPayload + sumPseudoHeader
-	for sumTotal>>16 > 0x0 {
-		sumTotal = (sumTotal & 0xffff) + (sumTotal >> 16)
-	}
+	pseudoHeader := append(h.srcIP, h.dstIP...)
+	pseudoHeader = append(pseudoHeader, []byte{0x00, h.protocol}...)
+	pseudoHeader = append(pseudoHeader, h.payloadLen...)
+	packetHeader := append(pseudoHeader, payload...)
+	sumTotal := checksumAddition(packetHeader)
 	return uint16(sumTotal) ^ 0xFFFF
 }
 
-func checksumAddition(b []byte) uint32 {
+func checksumAddition(b []byte) uint16 {
 	var sum uint32 = 0
 	cv := len(b) - 1
 	for i := 0; i < cv; i += 2 {
@@ -139,7 +136,11 @@ func checksumAddition(b []byte) uint32 {
 	if cv&1 == 0 {
 		sum += uint32(uint16(b[cv])<<8 | uint16(0x00))
 	}
-	return sum
+
+	for sum>>16 > 0x0 {
+		sum = (sum & 0xffff) + (sum >> 16)
+	}
+	return uint16(sum)
 }
 
 func checkPacketChecksum(v6 *ipv6Header, payload []byte) bool {
