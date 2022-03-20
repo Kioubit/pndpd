@@ -128,8 +128,8 @@ func calculateChecksum(h *ipv6Header, payload []byte) uint16 {
 		sumTotal = (sumTotal & 0xffff) + (sumTotal >> 16)
 	}
 	return uint16(sumTotal) ^ 0xFFFF
-
 }
+
 func checksumAddition(b []byte) uint32 {
 	var sum uint32 = 0
 	cv := len(b) - 1
@@ -137,7 +137,7 @@ func checksumAddition(b []byte) uint32 {
 		sum += uint32(uint16(b[i])<<8 | uint16(b[i+1]))
 	}
 	if cv&1 == 0 {
-		sum += uint32(uint16(b[cv]))
+		sum += uint32(uint16(b[cv])<<8 | uint16(0x00))
 	}
 	return sum
 }
