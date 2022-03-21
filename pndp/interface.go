@@ -1,11 +1,12 @@
 package pndp
 
 import (
-	"golang.org/x/net/bpf"
-	"golang.org/x/sys/unix"
 	"net"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/net/bpf"
+	"golang.org/x/sys/unix"
 )
 
 // bpfFilter represents a classic BPF filter program that can be applied to a socket
@@ -39,7 +40,6 @@ type iflags struct {
 }
 
 func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
-	//TODO re-test ALLMULTI
 
 	// -------------------------- Interface flags --------------------------
 	if withInterfaceFlags {
