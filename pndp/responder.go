@@ -12,6 +12,15 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 	stopWG.Add(1)
 	defer stopWG.Done()
 
+	var autoiface *net.Interface
+	if autoSense != "" {
+		var err error
+		autoiface, err = net.InterfaceByName(autoSense)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	var ndpQuestionsList = make([]*ndpQuestion, 0, 40)
 	var _, linkLocalSpace, _ = net.ParseCIDR("fe80::/10")
 
@@ -73,23 +82,8 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		// Auto-sense
 		if autoSense != "" {
 			//TODO Future work: Use another sub goroutine to monitor the interface instead of checking here
-			filter = make([]*net.IPNet, 0)
 			result = selectSourceIP(respondIface)
-			autoiface, err := net.InterfaceByName(autoSense)
-			if err != nil {
-				panic(err)
-			}
-			autoifaceaddrs, err := autoiface.Addrs()
-
-			for _, l := range autoifaceaddrs {
-				testIP, anet, err := net.ParseCIDR(l.String())
-				if err != nil {
-					break
-				}
-				if isIpv6(testIP.String()) {
-					filter = append(filter, anet)
-				}
-			}
+			filter = getInterfaceNetworkList(autoiface)
 		}
 
 		if filter != nil {
@@ -237,4 +231,22 @@ func selectSourceIP(iface *net.Interface) []byte {
 		}
 	}
 	return result
+}
+
+func getInterfaceNetworkList(iface *net.Interface) []*net.IPNet {
+	filter := make([]*net.IPNet, 0)
+	autoifaceaddrs, err := iface.Addrs()
+	if err == nil {
+		return filter
+	}
+	for _, l := range autoifaceaddrs {
+		testIP, anet, err := net.ParseCIDR(l.String())
+		if err != nil {
+			break
+		}
+		if isIpv6(testIP.String()) {
+			filter = append(filter, anet)
+		}
+	}
+	return filter
 }
