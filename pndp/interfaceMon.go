@@ -5,11 +5,11 @@ import (
 	"sync"
 )
 
-// TODO incomplete implementation
 var (
 	interfaceMonSync    sync.Mutex
 	interfaceMonRunning bool = false
 	startCount          int  = 0
+	wg                  sync.WaitGroup
 	s                   chan interface{}
 	u                   chan *interfaceAddressUpdate
 )
@@ -18,15 +18,16 @@ func startInterfaceMon() {
 	interfaceMonSync.Lock()
 	defer interfaceMonSync.Unlock()
 	if !interfaceMonRunning {
-		u := make(chan *interfaceAddressUpdate, 10)
-		s := make(chan interface{})
+		interfaceMonRunning = true
+		u = make(chan *interfaceAddressUpdate, 10)
+		s = make(chan interface{})
 		err := getInterfaceUpdates(u, s)
 		if err != nil {
 			panic(err.Error())
 		}
+		go getUpdates()
 	}
 	startCount++
-	go getUpdates()
 }
 
 func stopInterfaceMon() {
@@ -36,15 +37,19 @@ func stopInterfaceMon() {
 	if interfaceMonRunning && startCount <= 0 {
 		if s != nil {
 			close(s)
+			wg.Wait()
+			interfaceMonRunning = false
 		}
 	}
 }
 
 func getUpdates() {
+	wg.Add(1)
 	for {
 		update := <-u
 		if update == nil {
 			//channel closed
+			wg.Done()
 			return
 		}
 		if update.NetworkFamily != IPv6 {
@@ -57,6 +62,7 @@ func getUpdates() {
 
 		srcIP := selectSourceIP(iface)
 		monMutex.Lock()
+
 		for i := range monInterfaceList {
 			if monInterfaceList[i].iface.Name == iface.Name {
 				oldMonIface := monInterfaceList[i]
@@ -118,6 +124,9 @@ func addInterfaceToMon(iface string, autosense bool) {
 }
 
 func removeInterfaceFromMon(iface string) {
+	if iface == "" {
+		return
+	}
 	monMutex.Lock()
 	defer monMutex.Unlock()
 	niface, err := net.InterfaceByName(iface)
@@ -129,8 +138,8 @@ func removeInterfaceFromMon(iface string) {
 			oldMonIface := monInterfaceList[i]
 			oldMonIface.addCount--
 			if oldMonIface.addCount <= 0 {
-				monInterfaceList[i] = monInterfaceList[len(s)-1]
-				monInterfaceList = monInterfaceList[:len(s)-1]
+				monInterfaceList[i] = monInterfaceList[len(monInterfaceList)-1]
+				monInterfaceList = monInterfaceList[:len(monInterfaceList)-1]
 			}
 			return
 		}
@@ -140,11 +149,11 @@ func removeInterfaceFromMon(iface string) {
 func getInterfaceInfo(iface *net.Interface) *monInterface {
 	ifaceName := iface.Name
 	monMutex.RLock()
+	defer monMutex.RUnlock()
 	for i := range monInterfaceList {
 		if monInterfaceList[i].iface.Name == ifaceName {
 			return monInterfaceList[i]
 		}
 	}
-	defer monMutex.RUnlock()
 	return nil
 }
