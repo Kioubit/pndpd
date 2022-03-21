@@ -52,6 +52,12 @@ func (obj *ResponderObj) Start() {
 }
 func (obj *ResponderObj) start() {
 	obj.stopWG.Add(1)
+
+	startInterfaceMon()
+
+	addInterfaceToMon(obj.iface, false)
+	addInterfaceToMon(obj.autosense, true)
+
 	requests := make(chan *ndpRequest, 100)
 	defer func() {
 		close(requests)
@@ -62,6 +68,10 @@ func (obj *ResponderObj) start() {
 	fmt.Printf("Started responder instance on interface %s", obj.iface)
 	fmt.Println()
 	<-obj.stopChan
+
+	removeInterfaceFromMon(obj.iface)
+	removeInterfaceFromMon(obj.autosense)
+	stopInterfaceMon()
 }
 
 //Stop a running Responder instance
@@ -106,6 +116,11 @@ func (obj *ProxyObj) start() {
 		obj.stopWG.Done()
 	}()
 
+	startInterfaceMon()
+	addInterfaceToMon(obj.iface1, false)
+	addInterfaceToMon(obj.iface2, false)
+	addInterfaceToMon(obj.autosense, true)
+
 	out_iface1_sol_questions_iface2_adv := make(chan *ndpQuestion, 100)
 	defer close(out_iface1_sol_questions_iface2_adv)
 	out_iface2_sol_questions_iface1_adv := make(chan *ndpQuestion, 100)
@@ -134,6 +149,11 @@ func (obj *ProxyObj) start() {
 	fmt.Printf("Started Proxy instance on interfaces %s and %s (if enabled, the whitelist is applied on %s)", obj.iface1, obj.iface2, obj.iface2)
 	fmt.Println()
 	<-obj.stopChan
+
+	removeInterfaceFromMon(obj.iface1)
+	removeInterfaceFromMon(obj.iface2)
+	removeInterfaceFromMon(obj.autosense)
+	stopInterfaceMon()
 }
 
 //Stop a running Proxy instance

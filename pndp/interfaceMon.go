@@ -9,6 +9,7 @@ import (
 var (
 	interfaceMonSync    sync.Mutex
 	interfaceMonRunning bool = false
+	startCount          int  = 0
 	s                   chan interface{}
 	u                   chan *interfaceAddressUpdate
 )
@@ -24,13 +25,15 @@ func startInterfaceMon() {
 			panic(err.Error())
 		}
 	}
+	startCount++
 	go getUpdates()
 }
 
 func stopInterfaceMon() {
 	interfaceMonSync.Lock()
 	defer interfaceMonSync.Unlock()
-	if interfaceMonRunning {
+	startCount--
+	if interfaceMonRunning && startCount <= 0 {
 		if s != nil {
 			close(s)
 		}
@@ -82,6 +85,9 @@ var (
 )
 
 func addInterfaceToMon(iface string, autosense bool) {
+	if iface == "" {
+		return
+	}
 	monMutex.Lock()
 	defer monMutex.Unlock()
 

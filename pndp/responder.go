@@ -41,7 +41,8 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		panic(err.Error())
 	}
 
-	var result = selectSourceIP(respondIface)
+	//var result = selectSourceIP(respondIface)
+	var result []byte
 
 	for {
 		var req *ndpRequest
@@ -79,11 +80,13 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			continue
 		}
 
+		result = getInterfaceInfo(respondIface).sourceIP
 		// Auto-sense
 		if autoSense != "" {
-			//TODO Future work: Use another sub goroutine to monitor the interface instead of checking here
-			result = selectSourceIP(respondIface)
-			filter = getInterfaceNetworkList(autoiface)
+			//result = selectSourceIP(respondIface)
+			//filter = getInterfaceNetworkList(autoiface)
+			result = getInterfaceInfo(autoiface).sourceIP
+			filter = getInterfaceInfo(autoiface).networks
 		}
 
 		if filter != nil {
