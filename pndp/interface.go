@@ -94,3 +94,51 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 	}
 	// ---------------------------------------------------------------------
 }
+
+func selectSourceIP(iface *net.Interface) []byte {
+	var _, ulaSpace, _ = net.ParseCIDR("fc00::/7")
+	var result = emptyIpv6
+	ifaceaddrs, err := iface.Addrs()
+	if err != nil {
+		return result
+	}
+
+	for _, n := range ifaceaddrs {
+		tip, _, err := net.ParseCIDR(n.String())
+		if err != nil {
+			break
+		}
+		var haveUla = false
+		if isIpv6(tip.String()) {
+			if tip.IsGlobalUnicast() {
+				haveUla = true
+				result = tip
+
+				if !ulaSpace.Contains(tip) {
+					break
+				}
+			} else if tip.IsLinkLocalUnicast() && !haveUla {
+				result = tip
+			}
+		}
+	}
+	return result
+}
+
+func getInterfaceNetworkList(iface *net.Interface) []*net.IPNet {
+	filter := make([]*net.IPNet, 0)
+	autoifaceaddrs, err := iface.Addrs()
+	if err == nil {
+		return filter
+	}
+	for _, l := range autoifaceaddrs {
+		testIP, anet, err := net.ParseCIDR(l.String())
+		if err != nil {
+			break
+		}
+		if isIpv6(testIP.String()) {
+			filter = append(filter, anet)
+		}
+	}
+	return filter
+}
