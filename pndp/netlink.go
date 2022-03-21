@@ -15,22 +15,22 @@ type netlinkSocket struct {
 	lsa unix.SockaddrNetlink
 }
 
-type InterfaceAddressUpdate struct {
+type interfaceAddressUpdate struct {
 	InterfaceIndex int
-	Event          AddressUpdateInfo
-	NetworkFamily  NetworkFamily
+	Event          addressUpdateInfo
+	NetworkFamily  networkFamily
 	Flags          byte
 	Scope          byte
 }
 
-type NetworkFamily int
-type AddressUpdateInfo int
+type networkFamily int
+type addressUpdateInfo int
 
 const (
-	IPv4          NetworkFamily     = 4
-	IPv6          NetworkFamily     = 6
-	AddressDelete AddressUpdateInfo = 0
-	AddressAdd    AddressUpdateInfo = 1
+	IPv4          networkFamily     = 4
+	IPv6          networkFamily     = 6
+	AddressDelete addressUpdateInfo = 0
+	AddressAdd    addressUpdateInfo = 1
 )
 
 func newNetlinkSocket(protocol int, multicastGroups ...uint) (*netlinkSocket, error) {
@@ -89,7 +89,7 @@ func (socket *netlinkSocket) Close() {
 	socket.fd = -1
 }
 
-func GetInterfaceUpdates(updateChannel chan *InterfaceAddressUpdate, stopChannel chan interface{}) error {
+func getInterfaceUpdates(updateChannel chan *interfaceAddressUpdate, stopChannel chan interface{}) error {
 	// Note: UpdateChannel should be buffered
 
 	socket, err := newNetlinkSocket(unix.NETLINK_ROUTE, unix.RTNLGRP_IPV4_IFADDR, unix.RTNLGRP_IPV6_IFADDR)
@@ -115,7 +115,7 @@ func GetInterfaceUpdates(updateChannel chan *InterfaceAddressUpdate, stopChannel
 			if from.Pid != kernelPid {
 				continue
 			}
-			var event AddressUpdateInfo
+			var event addressUpdateInfo
 			for i := range messages {
 				switch messages[i].Header.Type {
 				case unix.NLMSG_DONE:
@@ -134,7 +134,7 @@ func GetInterfaceUpdates(updateChannel chan *InterfaceAddressUpdate, stopChannel
 				ifAddrMsgPointer := unsafe.Pointer(&t[0])
 				ifAddrMsg := (*unix.IfAddrmsg)(ifAddrMsgPointer)
 
-				var networkFamily NetworkFamily
+				var networkFamily networkFamily
 				switch int(ifAddrMsg.Family) {
 				case unix.AF_INET:
 					networkFamily = IPv4
@@ -144,7 +144,7 @@ func GetInterfaceUpdates(updateChannel chan *InterfaceAddressUpdate, stopChannel
 					continue
 				}
 
-				update := &InterfaceAddressUpdate{}
+				update := &interfaceAddressUpdate{}
 				update.Event = event
 				update.InterfaceIndex = int(ifAddrMsg.Index)
 				update.Flags = ifAddrMsg.Flags
