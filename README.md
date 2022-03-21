@@ -38,7 +38,7 @@ More options and additional documentation in the example config file (``pndpd.co
 For building, the version of go needs to be installed that is specified in the go.mod file. A makefile is available. Optionally adjust the ``MODULES`` variable to include or exclude modules from the modules directory.
 ````
 make clean
-make release-all
+make release
 ```` 
 Find the binaries in the ``bin/`` directory
 

@@ -56,7 +56,8 @@ func initCallback(callback modules.CallbackInfo) {
 	if callback.CallbackType == modules.CommandLine {
 		switch callback.Command.CommandText {
 		case "proxy":
-			if len(callback.Arguments) == 3 {
+			switch len(callback.Arguments) {
+			case 3:
 				allProxies = append(allProxies, &configProxy{
 					Iface1:    callback.Arguments[0],
 					Iface2:    callback.Arguments[1],
@@ -64,7 +65,7 @@ func initCallback(callback modules.CallbackInfo) {
 					autosense: "",
 					instance:  nil,
 				})
-			} else {
+			case 2:
 				allProxies = append(allProxies, &configProxy{
 					Iface1:    callback.Arguments[0],
 					Iface2:    callback.Arguments[1],
@@ -72,6 +73,8 @@ func initCallback(callback modules.CallbackInfo) {
 					autosense: "",
 					instance:  nil,
 				})
+			default:
+				showError("Invalid syntax")
 			}
 		case "responder":
 			if len(callback.Arguments) == 2 {
@@ -189,7 +192,7 @@ func shutdownCallback() {
 }
 
 func showError(error string) {
-	fmt.Println(error)
+	fmt.Println("Error:", error)
 	fmt.Println("Exiting due to error")
 	os.Exit(1)
 }

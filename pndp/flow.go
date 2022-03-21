@@ -3,6 +3,7 @@ package pndp
 import (
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +39,10 @@ func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) 
 	if filter == nil && autosenseInterface == "" {
 		fmt.Println("WARNING: You should use a whitelist for the responder unless you really know what you are doing")
 	}
+	if !isValidNetworkInterface(iface, autosenseInterface) {
+		showError("No such network interface")
+	}
+
 	var s sync.WaitGroup
 	return &ResponderObj{
 		stopChan:  make(chan struct{}),
@@ -96,6 +101,11 @@ func (obj *ResponderObj) Stop() bool {
 //
 // Start() must be called on the object to actually start proxying
 func NewProxy(iface1 string, iface2 string, filter []*net.IPNet, autosenseInterface string) *ProxyObj {
+
+	if !isValidNetworkInterface(iface1, iface2, autosenseInterface) {
+		showError("No such network interface")
+	}
+
 	var s sync.WaitGroup
 	return &ProxyObj{
 		stopChan:  make(chan struct{}),
@@ -180,7 +190,7 @@ func ParseFilter(f string) []*net.IPNet {
 	for i, n := range s {
 		_, cidr, err := net.ParseCIDR(n)
 		if err != nil {
-			panic(err)
+			showError("filter:", err.Error())
 		}
 		result[i] = cidr
 	}
@@ -199,4 +209,27 @@ func wgWaitTimout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	case <-time.After(timeout):
 		return false
 	}
+}
+
+func isValidNetworkInterface(iface ...string) bool {
+	for i := range iface {
+		if iface[i] == "" {
+			return true
+		}
+		if _, err := net.InterfaceByName(iface[i]); err != nil {
+			fmt.Println(iface[i])
+			return false
+		}
+	}
+	return true
+}
+
+func showError(error ...string) {
+	fmt.Printf("Error: ")
+	for _, err := range error {
+		fmt.Printf(err + " ")
+	}
+	fmt.Println()
+	fmt.Println("Exiting due to error")
+	os.Exit(1)
 }
