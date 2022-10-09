@@ -8,8 +8,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// TODO autosense, source ip implementation
-
 type netlinkSocket struct {
 	fd  int
 	lsa unix.SockaddrNetlink

@@ -1,10 +1,9 @@
 # Makefile for PNDPD
-
 BINARY=pndpd
 MODULES=
 VERSION=`git describe --tags`
-LDFLAGS=-ldflags "-X main.Version=${VERSION}"
-BUILDFLAGS=-trimpath -buildmode=pie
+LDFLAGS=-ldflags "-X main.Version=${VERSION} -s -w"
+BUILDFLAGS=-trimpath
 
 build:
 	go build -tags=${MODULES} -o bin/${BINARY} .
