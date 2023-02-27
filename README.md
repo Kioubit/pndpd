@@ -29,6 +29,8 @@ pndpd proxy <external interface> <internal interface> <[optional] 'auto' to dete
 pndpd responder <external interface> <[optional] 'auto' to determine filters from the external interface or whitelist of CIDRs separated by a semicolon>
 pndpd config <path to file>
 ````
+**Example:** ``pndpd proxy eth0 tun0 auto``
+
 More options and additional documentation in the example config file (``pndpd.conf``).
 
 ## Example Scenario
@@ -46,7 +48,7 @@ root@vultr:~# ip -6 addr show dev enp1s0
 As we can see from the output, a `/64` subnet of public IPv6 addresses has been assigned to our VPS on our WAN interface `enp1s0`:
 `2001:11ff:7400:82f2:5400:4ff:fe53:26cf/64`.
 
-#### 2) Routing the Subnet to the VPN interface
+#### 2) Routing the subnet to the VPN interface
 To route this subnet to our VPN interface `tun0` we need to assign one ip address to the VPS and the rest to the VPN interface.  
 To do that we edit the `/etc/network/interface` file (for systems that use ifupdown2):
 
@@ -79,12 +81,12 @@ On the VPN interface we can now assign the rest of the addresses:
 #### 3) Running PNDPD
 To proxy NDP requests from the outside interface to the VPN interface we run pndp like this:
 ````
-sudo proxy enp1s0 tun0 auto
+sudo pndpd proxy enp1s0 tun0 auto
 ````
 Note: sudo is not required if you are using the capability as described in the systemd unit file.
+Optionally confirm that the setup works via ping and tcpdump.  
 
-
-## Building
+## Building PNDPD
 For building, the version of go needs to be installed that is specified in the go.mod file. A makefile is available. Optionally adjust the ``MODULES`` variable to include or exclude modules from the "modules" directory.
 ````
 make clean; make release
