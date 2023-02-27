@@ -14,13 +14,13 @@ import (
 func init() {
 	commands := []modules.Command{{
 		CommandText:        "proxy",
-		Description:        "pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>",
+		Description:        "pndpd proxy <external interface> <internal interface> <[optional] 'auto' to determine filters from the external interface or whitelist of CIDRs separated by a semicolon>",
 		BlockTerminate:     true,
 		ConfigEnabled:      true,
 		CommandLineEnabled: true,
 	}, {
 		CommandText:        "responder",
-		Description:        "pndpd responder <interface> <optional whitelist of CIDRs separated by a semicolon>",
+		Description:        "pndpd responder <external interface> <[optional] 'auto' to determine filters from the internal interface or whitelist of CIDRs separated by a semicolon>",
 		BlockTerminate:     true,
 		ConfigEnabled:      true,
 		CommandLineEnabled: true,
@@ -58,11 +58,17 @@ func initCallback(callback modules.CallbackInfo) {
 		case "proxy":
 			switch len(callback.Arguments) {
 			case 3:
+				var filter = callback.Arguments[2]
+				var autosense = ""
+				if callback.Arguments[2] == "auto" {
+					filter = ""
+					autosense = callback.Arguments[1]
+				}
 				allProxies = append(allProxies, &configProxy{
 					Iface1:    callback.Arguments[0],
 					Iface2:    callback.Arguments[1],
-					Filter:    callback.Arguments[2],
-					autosense: "",
+					Filter:    filter,
+					autosense: autosense,
 					instance:  nil,
 				})
 			case 2:
@@ -78,10 +84,16 @@ func initCallback(callback modules.CallbackInfo) {
 			}
 		case "responder":
 			if len(callback.Arguments) == 2 {
+				var filter = callback.Arguments[1]
+				var autosense = ""
+				if callback.Arguments[1] == "auto" {
+					filter = ""
+					autosense = callback.Arguments[0]
+				}
 				allResponders = append(allResponders, &configResponder{
 					Iface:     callback.Arguments[0],
-					Filter:    callback.Arguments[1],
-					autosense: "",
+					Filter:    filter,
+					autosense: autosense,
 					instance:  nil,
 				})
 			} else {
@@ -109,11 +121,11 @@ func initCallback(callback modules.CallbackInfo) {
 			obj := configProxy{}
 			filter := ""
 			for _, n := range callback.Arguments {
-				if strings.HasPrefix(n, "iface1") {
-					obj.Iface1 = strings.TrimSpace(strings.TrimPrefix(n, "iface1"))
+				if strings.HasPrefix(n, "ext-iface") {
+					obj.Iface1 = strings.TrimSpace(strings.TrimPrefix(n, "ext-iface"))
 				}
-				if strings.HasPrefix(n, "iface2") {
-					obj.Iface2 = strings.TrimSpace(strings.TrimPrefix(n, "iface2"))
+				if strings.HasPrefix(n, "int-iface") {
+					obj.Iface2 = strings.TrimSpace(strings.TrimPrefix(n, "int-iface"))
 				}
 				if strings.HasPrefix(n, "filter") {
 					filter += strings.TrimSpace(strings.TrimPrefix(n, "filter")) + ";"
@@ -133,7 +145,7 @@ func initCallback(callback modules.CallbackInfo) {
 				showError("config: cannot have both a filter and autosense enabled on a proxy object")
 			}
 			if obj.Iface2 == "" || obj.Iface1 == "" {
-				showError("config: two interfaces need to be specified in the config file for a proxy object. (iface1 and iface2 parameters)")
+				showError("config: two interfaces need to be specified in the config file for a proxy object. (ext-iface and int-iface parameters)")
 			}
 			allProxies = append(allProxies, &obj)
 		case "responder":

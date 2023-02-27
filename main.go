@@ -15,7 +15,7 @@ import (
 var Version = "Custom_Build"
 
 func main() {
-	fmt.Println("PNDPD Version", Version, "- Kioubit 2022")
+	fmt.Println("PNDPD Version", Version, "- Kioubit")
 
 	if len(os.Args) <= 2 {
 		printUsage()
