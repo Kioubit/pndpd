@@ -128,7 +128,7 @@ func selectSourceIP(iface *net.Interface) []byte {
 func getInterfaceNetworkList(iface *net.Interface) []*net.IPNet {
 	filter := make([]*net.IPNet, 0)
 	autoifaceaddrs, err := iface.Addrs()
-	if err == nil {
+	if err != nil {
 		return filter
 	}
 	for _, l := range autoifaceaddrs {
