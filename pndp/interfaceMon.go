@@ -23,7 +23,7 @@ func startInterfaceMon() {
 		s = make(chan interface{})
 		err := getInterfaceUpdates(u, s)
 		if err != nil {
-			panic(err.Error())
+			showFatalError(err.Error())
 		}
 		go getUpdates()
 	}
@@ -79,7 +79,7 @@ func getUpdates() {
 
 type monInterface struct {
 	addCount  int
-	sourceIP  []byte //TODO ULA and GUA
+	sourceIP  []byte //TODO ULA
 	networks  []*net.IPNet
 	iface     *net.Interface
 	autosense bool
@@ -99,7 +99,7 @@ func addInterfaceToMon(iface string, autosense bool) {
 
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
-		panic(err.Error())
+		showFatalError(err.Error())
 	}
 
 	for i := range monInterfaceList {
@@ -131,7 +131,7 @@ func removeInterfaceFromMon(iface string) {
 	defer monMutex.Unlock()
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
-		panic(err.Error())
+		showFatalError(err.Error())
 	}
 	for i := range monInterfaceList {
 		if monInterfaceList[i].iface.Name == niface.Name {

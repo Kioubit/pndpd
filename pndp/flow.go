@@ -40,7 +40,7 @@ func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) 
 		fmt.Println("WARNING: You should use a whitelist for the responder unless you really know what you are doing")
 	}
 	if !isValidNetworkInterface(iface, autosenseInterface) {
-		showError("No such network interface")
+		showFatalError("No such network interface")
 	}
 
 	var s sync.WaitGroup
@@ -79,7 +79,7 @@ func (obj *ResponderObj) start() {
 	stopInterfaceMon()
 }
 
-//Stop a running Responder instance
+// Stop a running Responder instance
 // Returns false on error
 func (obj *ResponderObj) Stop() bool {
 	close(obj.stopChan)
@@ -103,7 +103,7 @@ func (obj *ResponderObj) Stop() bool {
 func NewProxy(iface1 string, iface2 string, filter []*net.IPNet, autosenseInterface string) *ProxyObj {
 
 	if !isValidNetworkInterface(iface1, iface2, autosenseInterface) {
-		showError("No such network interface")
+		showFatalError("No such network interface")
 	}
 
 	var s sync.WaitGroup
@@ -166,7 +166,7 @@ func (obj *ProxyObj) start() {
 	stopInterfaceMon()
 }
 
-//Stop a running Proxy instance
+// Stop a running Proxy instance
 // Returns false on error
 func (obj *ProxyObj) Stop() bool {
 	close(obj.stopChan)
@@ -190,7 +190,7 @@ func ParseFilter(f string) []*net.IPNet {
 	for i, n := range s {
 		_, cidr, err := net.ParseCIDR(n)
 		if err != nil {
-			showError("filter:", err.Error())
+			showFatalError("filter:", err.Error())
 		}
 		result[i] = cidr
 	}
@@ -224,7 +224,7 @@ func isValidNetworkInterface(iface ...string) bool {
 	return true
 }
 
-func showError(error ...string) {
+func showFatalError(error ...string) {
 	fmt.Printf("Error: ")
 	for _, err := range error {
 		fmt.Printf(err + " ")

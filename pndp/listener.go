@@ -21,7 +21,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
-		panic(err.Error())
+		showFatalError(err.Error())
 	}
 	tiface := &syscall.SockaddrLinklayer{
 		Protocol: htons16(syscall.ETH_P_IPV6),
@@ -43,12 +43,12 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	}
 
 	if len([]byte(iface)) > syscall.IFNAMSIZ {
-		panic("Interface size larger then maximum allowed by the kernel")
+		showFatalError("Interface size larger then maximum allowed by the kernel")
 	}
 
 	err = syscall.Bind(fd, tiface)
 	if err != nil {
-		panic(err.Error())
+		showFatalError(err.Error())
 	}
 
 	setPromisc(fd, iface, true, false)
@@ -83,14 +83,14 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 
 	err = f.ApplyTo(fd)
 	if err != nil {
-		panic(err.Error())
+		showFatalError(err.Error())
 	}
 
 	for {
 		buf := make([]byte, 86)
 		numRead, err := syscall.Read(fd, buf)
 		if err != nil {
-			panic(err)
+			showFatalError(err.Error())
 		}
 		if numRead < 78 {
 			if GlobalDebug {

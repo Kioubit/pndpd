@@ -17,7 +17,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		var err error
 		autoiface, err = net.InterfaceByName(autoSense)
 		if err != nil {
-			panic(err)
+			showFatalError(err.Error())
 		}
 	}
 
@@ -26,19 +26,19 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
 	if err != nil {
-		panic(err)
+		showFatalError(err.Error())
 	}
 	defer func(fd int) {
 		_ = syscall.Close(fd)
 	}(fd)
 	err = syscall.BindToDevice(fd, iface)
 	if err != nil {
-		panic(err)
+		showFatalError(err.Error())
 	}
 
 	respondIface, err := net.InterfaceByName(iface)
 	if err != nil {
-		panic(err.Error())
+		showFatalError(err.Error())
 	}
 
 	//var result = selectSourceIP(respondIface)

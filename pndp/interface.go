@@ -45,14 +45,14 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 	if withInterfaceFlags {
 		tFD, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_DGRAM, 0)
 		if err != nil {
-			panic(err)
+			showFatalError(err.Error())
 		}
 
 		var ifl iflags
 		copy(ifl.name[:], []byte(iface))
 		_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tFD), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
 		if ep != 0 {
-			panic(ep)
+			showFatalError(ep.Error())
 		}
 
 		if enable {
@@ -63,7 +63,7 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 
 		_, _, ep = syscall.Syscall(syscall.SYS_IOCTL, uintptr(tFD), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
 		if ep != 0 {
-			panic(ep)
+			showFatalError(ep.Error())
 		}
 
 		_ = syscall.Close(tFD)
@@ -73,7 +73,7 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 	// -------------------------- Socket Options ---------------------------
 	iFace, err := net.InterfaceByName(iface)
 	if err != nil {
-		panic(err.Error())
+		showFatalError(err.Error())
 	}
 
 	mReq := unix.PacketMreq{
@@ -90,7 +90,7 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 
 	err = unix.SetsockoptPacketMreq(fd, unix.SOL_PACKET, opt, &mReq)
 	if err != nil {
-		panic(err)
+		showFatalError(err.Error())
 	}
 	// ---------------------------------------------------------------------
 }
