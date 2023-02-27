@@ -1,18 +1,17 @@
-# PNDPD - NDP Responder + Proxy
+# PNDPD - NDP Responder / Proxy (IPv6)
 ## Features
 - **Efficiently** process incoming packets using bpf (which runs in the kernel)
-- Respond to all NDP solicitations on an interface
-- **Respond** to NDP solicitations for whitelisted addresses on an interface
 - **Proxy** NDP between interfaces with an optional whitelist
-- Optionally determine whitelist **automatically** based on the IPs assigned to the interfaces 
-- Permissions required: root or CAP_NET_RAW
+- Optionally determine whitelist **automatically** based on the IPs assigned to the interfaces
+- **Respond** to NDP solicitations for all or only whitelisted addresses on an interface
+- Permissions required: root or **CAP_NET_RAW**
 - Easily expandable with modules
 
 ## Installing & Updating
 
 1) Download the latest release from the [releases page](https://github.com/Kioubit/pndpd/releases) and move the binary to the ``/usr/local/bin/`` directory under the filename ``pndpd``.
 2) Allow executing the file by running ``chmod +x /usr/local/bin/pndpd``
-3) **For systemd users:** Install the service unit file
+3) Install the systemd service unit file:
 ```` 
 wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.service -P /etc/systemd/system/
 systemctl enable pndpd.service
@@ -26,38 +25,68 @@ wget https://raw.githubusercontent.com/Kioubit/pndpd/master/pndpd.conf -P /etc/p
 
 ## Manual Usage
 ```` 
+pndpd proxy <external interface> <internal interface> <[optional] 'auto' to determine filters from the internal interface or whitelist of CIDRs separated by a semicolon>
+pndpd responder <external interface> <[optional] 'auto' to determine filters from the external interface or whitelist of CIDRs separated by a semicolon>
 pndpd config <path to file>
-pndpd responder <interface> <optional whitelist of CIDRs separated by a semicolon>
-pndpd proxy <interface1> <interface2> <optional whitelist of CIDRs separated by a semicolon applied to interface2>
 ````
 More options and additional documentation in the example config file (``pndpd.conf``).
 
-## Developing
+## Example Scenario
+### Proxying NDP requests for a /64 IPv6 subnet on a VPS to a VPN tunnel 
 
-### Building
-For building, the version of go needs to be installed that is specified in the go.mod file. A makefile is available. Optionally adjust the ``MODULES`` variable to include or exclude modules from the modules directory.
+#### 1) Inspecting the initial IP configuration
 ````
-make clean
-make release
+root@vultr:~# ip -6 addr show dev enp1s0
+2: enp1s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    inet6 2001:11ff:7400:82f2:5400:4ff:fe53:26cf/64 scope global dynamic mngtmpaddr 
+       valid_lft 2591753sec preferred_lft 604553sec
+    inet6 fe80::5400:4ff:fe53:26cf/64 scope link 
+       valid_lft forever preferred_lft forever
+```` 
+As we can see from the output, a `/64` subnet of public IPv6 addresses has been assigned to our VPS on our WAN interface `enp1s0`:
+`2001:11ff:7400:82f2:5400:4ff:fe53:26cf/64`.
+
+#### 2) Routing the Subnet to the VPN interface
+To route this subnet to our VPN interface `tun0` we need to assign one ip address to the VPS and the rest to the VPN interface.  
+To do that we edit the `/etc/network/interface` file (for systems that use ifupdown2):
+
+##### Initial contents:
+````
+allow-hotplug enp1s0
+
+iface enp1s0 inet static 
+    #.... IPv4 config here ...
+
+iface enp1s0 inet6
+    address 2001:11ff:7400:82f2:5400:4ff:fe53:26cf/64
+    fe80::fc00:4ff:fe53:26cf
+````
+##### After editing:
+````
+allow-hotplug enp1s0
+
+iface enp1s0 inet static 
+    #.... IPv4 config here ...
+
+iface enp1s0 inet6 static
+    address 2001:11ff:7400:82f2::1/128
+    gateway fe80::fc00:4ff:fe53:26cf
+````
+On the VPN interface we can now assign the rest of the addresses:
+
+`ip addr add 2001:11ff:7400:82f2::1/64 dev tun0`
+
+#### 3) Running PNDPD
+To proxy NDP requests from the outside interface to the VPN interface we run pndp like this:
+````
+sudo proxy enp1s0 tun0 auto
+````
+Note: sudo is not required if you are using the capability as described in the systemd unit file.
+
+
+## Building
+For building, the version of go needs to be installed that is specified in the go.mod file. A makefile is available. Optionally adjust the ``MODULES`` variable to include or exclude modules from the "modules" directory.
+````
+make clean; make release
 ```` 
 Find the binaries in the ``bin/`` directory
-
-### Adding Modules 
-It is easy to add functionality to PNDPD. For additions outside the core functionality you only need to keep the following methods in mind:
-```` 
-package main
-import "pndpd/pndp"
-
-pndp.ParseFilter(f string) []*net.IPNet
-
-responderInstance := pndp.NewResponder(iface string, filter []*net.IPNet, autosenseInterface string)
-responderInstance.Start()
-responderInstance.Stop()
-
-proxyInstance := pndp.NewProxy(iface1 string, iface2 string, filter []*net.IPNet, autosenseInterface string)
-proxyInstance.Start()
-proxyInstance.Stop()
-````
-New functionality should be implemented as a module. You will find an example module under ``modules/example/``. 
-
-Pull requests are welcome for any functionality you add.
