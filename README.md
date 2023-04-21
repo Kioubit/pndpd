@@ -31,7 +31,7 @@ pndpd config <path to file>
 ````
 **Example:** ``pndpd proxy eth0 tun0 auto``
 
-More options and additional documentation in the example config file (``pndpd.conf``).
+Find more options and additional documentation in the example config file (``pndpd.conf``).
 
 ## Example Scenario
 ### Proxying NDP requests for a /64 IPv6 subnet on a VPS to a VPN tunnel 
@@ -87,7 +87,7 @@ Note: sudo is not required if you are using the capability as described in the s
 Optionally confirm that the setup works via ping and tcpdump.  
 
 ## Building PNDPD
-For building, the version of go needs to be installed that is specified in the go.mod file. A makefile is available. Optionally adjust the ``MODULES`` variable to include or exclude modules from the "modules" directory.
+For building, the version of go needs to be installed that is specified in the `go.mod` file. A makefile is available. Optionally adjust the ``MODULES`` variable to include or exclude modules from the "modules" directory.
 ````
 make clean; make release
 ```` 

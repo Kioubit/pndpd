@@ -47,7 +47,7 @@ func newNetlinkSocket(protocol int, multicastGroups ...uint) (*netlinkSocket, er
 
 	err = unix.Bind(fd, &socket.lsa)
 	if err != nil {
-		unix.Close(fd)
+		_ = unix.Close(fd)
 		return nil, err
 	}
 	return socket, nil
@@ -83,7 +83,7 @@ func (socket *netlinkSocket) receiveMessage() ([]syscall.NetlinkMessage, *unix.S
 }
 
 func (socket *netlinkSocket) Close() {
-	unix.Close(socket.fd)
+	_ = unix.Close(socket.fd)
 	socket.fd = -1
 }
 

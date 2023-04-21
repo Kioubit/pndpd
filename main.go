@@ -48,11 +48,11 @@ func main() {
 func printUsage() {
 	fmt.Println("More options and additional documentation in the example config file")
 	fmt.Println("Usage:")
-	fmt.Println("pndpd config <path to file>")
+	fmt.Println("\tpndpd config <path to file>")
 	for i := range modules.ModuleList {
 		for d := range (*modules.ModuleList[i]).Commands {
 			if (*modules.ModuleList[i]).Commands[d].CommandLineEnabled {
-				fmt.Println((*modules.ModuleList[i]).Commands[d].Description)
+				fmt.Println("\t" + (*modules.ModuleList[i]).Commands[d].Description)
 			}
 		}
 	}

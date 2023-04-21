@@ -5,8 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"net"
-	"strings"
+	"net/netip"
 )
 
 var emptyIpv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -169,6 +168,9 @@ func checkPacketChecksum(v6 *ipv6Header, payload []byte) bool {
 }
 
 func isIpv6(ip string) bool {
-	rip := net.ParseIP(ip)
-	return rip != nil && strings.Contains(ip, ":")
+	testIp, err := netip.ParseAddr(ip)
+	if err != nil {
+		return false
+	}
+	return testIp.Is6()
 }

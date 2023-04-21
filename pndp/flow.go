@@ -31,17 +31,17 @@ type ProxyObj struct {
 //
 // iface - The interface to listen to and respond from
 //
-// filter - Optional (can be nil) list of CIDRs to whitelist. Must be IPV6! ParseFilter verifies ipv6
+// filter - Optional (can be nil) list of IPv6 addresses in CIDR notation to whitelist. Must be IPV6. The ParseFilter function verifies that.
 //
-// With the optional autosenseInterface argument, the whitelist is configured based on the addresses assigned to the interface specified. This works even if the IP addresses change frequently.
+// With the optional "autosenseInterface" argument, the whitelist is configured based on the addresses assigned to the interface specified.
+// This works even if the IP addresses change frequently.
+//
 // Start() must be called on the object to actually start responding
 func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) *ResponderObj {
 	if filter == nil && autosenseInterface == "" {
 		fmt.Println("WARNING: You should use a whitelist for the responder unless you really know what you are doing")
 	}
-	if !isValidNetworkInterface(iface, autosenseInterface) {
-		showFatalError("No such network interface")
-	}
+	checkIsValidNetworkInterfaceFatal(iface, autosenseInterface)
 
 	var s sync.WaitGroup
 	return &ResponderObj{
@@ -95,16 +95,15 @@ func (obj *ResponderObj) Stop() bool {
 
 // NewProxy Proxy NDP between interfaces iface1 and iface2 with an optional filter (whitelist)
 //
-// filter - Optional (can be nil) list of CIDRs to whitelist. Must be IPV6! ParseFilter verifies ipv6
+// filter - Optional (can be nil) list of IPv6 addresses in CIDR notation to whitelist. Must be IPV6. The ParseFilter function verifies that.
 //
-// With the optional autosenseInterface argument, the whitelist is configured based on the addresses assigned to the interface specified. This works even if the IP addresses change frequently.
+// With the optional "autosenseInterface" argument, the whitelist is configured based on the addresses assigned to the interface specified.
+// This works even if the IP addresses change frequently.
 //
 // Start() must be called on the object to actually start proxying
 func NewProxy(iface1 string, iface2 string, filter []*net.IPNet, autosenseInterface string) *ProxyObj {
 
-	if !isValidNetworkInterface(iface1, iface2, autosenseInterface) {
-		showFatalError("No such network interface")
-	}
+	checkIsValidNetworkInterfaceFatal(iface1, iface2, autosenseInterface)
 
 	var s sync.WaitGroup
 	return &ProxyObj{
@@ -211,17 +210,22 @@ func wgWaitTimout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	}
 }
 
-func isValidNetworkInterface(iface ...string) bool {
-	for i := range iface {
-		if iface[i] == "" {
-			return true
-		}
-		if _, err := net.InterfaceByName(iface[i]); err != nil {
-			fmt.Println(iface[i])
-			return false
-		}
+func isValidNetworkInterface(iface string) bool {
+	if iface == "" {
+		return true
+	}
+	if _, err := net.InterfaceByName(iface); err != nil {
+		return false
 	}
 	return true
+}
+
+func checkIsValidNetworkInterfaceFatal(iface ...string) {
+	for i := range iface {
+		if !isValidNetworkInterface(iface[i]) {
+			showFatalError(fmt.Sprintf("No such network interface \"%s\"", iface[i]))
+		}
+	}
 }
 
 func showFatalError(error ...string) {

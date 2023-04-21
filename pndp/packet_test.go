@@ -73,7 +73,7 @@ func TestCheckPacketChecksum(t *testing.T) {
 		if err != nil {
 			t.Errorf(err.Error())
 		}
-		got := checkPacketChecksum(testHeader, []byte(payloadBytes))
+		got := checkPacketChecksum(testHeader, payloadBytes)
 		if tc.want != got {
 			t.Errorf("Excpected valid: '%t', but got valid: '%t' with payload '%x'", tc.want, got, payloadBytes)
 		}

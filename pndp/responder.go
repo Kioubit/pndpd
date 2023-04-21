@@ -41,8 +41,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		showFatalError(err.Error())
 	}
 
-	//var result = selectSourceIP(respondIface)
-	var result []byte
+	var selectedSelfSourceIP []byte
 
 	for {
 		var req *ndpRequest
@@ -80,12 +79,10 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			continue
 		}
 
-		result = getInterfaceInfo(respondIface).sourceIP
+		selectedSelfSourceIP = getInterfaceInfo(respondIface).sourceIP
 		// Auto-sense
 		if autoSense != "" {
-			//result = selectSourceIP(respondIface)
-			//filter = getInterfaceNetworkList(autoiface)
-			result = getInterfaceInfo(autoiface).sourceIP
+			selectedSelfSourceIP = getInterfaceInfo(autoiface).sourceIP
 			filter = getInterfaceInfo(autoiface).networks
 		}
 
@@ -110,7 +107,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		}
 
 		if req.sourceIface == iface {
-			pkt(fd, result, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
+			pkt(fd, selectedSelfSourceIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
 			if respondType == ndp_ADV {
 				if !bytes.Equal(req.dstIP, allNodesMulticastIPv6) { // Skip in case of unsolicited advertisement
@@ -126,7 +123,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			} else {
 				if bytes.Equal(req.srcIP, emptyIpv6) {
 					// Duplicate Address detection is in progress
-					result = emptyIpv6
+					selectedSelfSourceIP = emptyIpv6
 				} else {
 					ndpQuestionChan <- &ndpQuestion{
 						targetIP: req.answeringForIP,
@@ -134,7 +131,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 					}
 				}
 			}
-			pkt(fd, result, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
+			pkt(fd, selectedSelfSourceIP, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		}
 	}
 }
@@ -202,13 +199,18 @@ func getAddressFromQuestionList(targetIP []byte, ndpQuestionsList []*ndpQuestion
 	return nil, false
 }
 func removeFromQuestionList(s []*ndpQuestion, i int) []*ndpQuestion {
-	s[i] = s[len(s)-1]
-	return s[:len(s)-1]
+	/*
+		More efficient but order has some importance as otherwise newer entries might get removed via cleanupQuestionList()
+		s[i] = s[len(s)-1]
+		return s[:len(s)-1]
+	*/
+	return append(s[:i], s[i+1:]...)
 }
 
 func cleanupQuestionList(s []*ndpQuestion) []*ndpQuestion {
-	for len(s) >= 40 {
-		s = removeFromQuestionList(s, 0)
+	toRemove := len(s) - 40
+	if toRemove <= 0 {
+		return s
 	}
-	return s
+	return s[toRemove:]
 }

@@ -7,8 +7,8 @@ import (
 
 var (
 	interfaceMonSync    sync.Mutex
-	interfaceMonRunning bool = false
-	startCount          int  = 0
+	interfaceMonRunning = false
+	startCount          = 0
 	wg                  sync.WaitGroup
 	s                   chan interface{}
 	u                   chan *interfaceAddressUpdate
