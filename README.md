@@ -59,9 +59,9 @@ allow-hotplug enp1s0
 iface enp1s0 inet static 
     #.... IPv4 config here ...
 
-iface enp1s0 inet6
+iface enp1s0 inet6 static
     address 2001:11ff:7400:82f2:5400:4ff:fe53:26cf/64
-    fe80::fc00:4ff:fe53:26cf
+    gateway fe80::fc00:4ff:fe53:26cf
 ````
 ##### After editing:
 ````
