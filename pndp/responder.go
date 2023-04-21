@@ -113,18 +113,25 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			pkt(fd, result, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
 			if respondType == ndp_ADV {
-				success := false
-				req.dstIP, success = getAddressFromQuestionListRetry(req.answeringForIP, ndpQuestionChan, ndpQuestionsList)
-				if !success {
-					if GlobalDebug {
-						fmt.Println("Nobody has asked for this IP")
+				if !bytes.Equal(req.dstIP, allNodesMulticastIPv6) { // Skip in case of unsolicited advertisement
+					success := false
+					req.dstIP, success = getAddressFromQuestionListRetry(req.answeringForIP, ndpQuestionChan, ndpQuestionsList)
+					if !success {
+						if GlobalDebug {
+							fmt.Println("Nobody has asked for this IP")
+						}
+						continue
 					}
-					continue
 				}
 			} else {
-				ndpQuestionChan <- &ndpQuestion{
-					targetIP: req.answeringForIP,
-					askedBy:  req.srcIP,
+				if bytes.Equal(req.srcIP, emptyIpv6) {
+					// Duplicate Address detection is in progress
+					result = emptyIpv6
+				} else {
+					ndpQuestionChan <- &ndpQuestion{
+						targetIP: req.answeringForIP,
+						askedBy:  req.srcIP,
+					}
 				}
 			}
 			pkt(fd, result, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)

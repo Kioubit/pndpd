@@ -10,6 +10,7 @@ import (
 )
 
 var emptyIpv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+var allNodesMulticastIPv6 = []byte{0xFF, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}
 
 type payload interface {
 	constructPacket() ([]byte, int)
