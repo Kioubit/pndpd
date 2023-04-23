@@ -35,18 +35,20 @@ func init() {
 }
 
 type configResponder struct {
-	Iface     string
-	Filter    string
-	autosense string
-	instance  *pndp.ResponderObj
+	Iface                 string
+	Filter                string
+	autosense             string
+	DontMonitorInterfaces bool
+	instance              *pndp.ResponderObj
 }
 
 type configProxy struct {
-	Iface1    string
-	Iface2    string
-	Filter    string
-	autosense string
-	instance  *pndp.ProxyObj
+	Iface1                string
+	Iface2                string
+	Filter                string
+	autosense             string
+	DontMonitorInterfaces bool
+	instance              *pndp.ProxyObj
 }
 
 var allResponders []*configResponder
@@ -136,6 +138,9 @@ func initCallback(callback modules.CallbackInfo) {
 				if strings.HasPrefix(n, "autosense") {
 					obj.autosense = strings.TrimSpace(strings.TrimPrefix(n, "autosense"))
 				}
+				if strings.HasPrefix(n, "monitor-changes") {
+					obj.DontMonitorInterfaces = strings.TrimSpace(strings.TrimPrefix(n, "monitor-changes")) == "off"
+				}
 				if strings.Contains(n, "//") {
 					showError("config: comments are not allowed after arguments")
 				}
@@ -170,6 +175,9 @@ func initCallback(callback modules.CallbackInfo) {
 				if obj.Iface == "" {
 					showError("config: interface not specified in the responder object. (iface parameter)")
 				}
+				if strings.HasPrefix(n, "monitor-changes") {
+					obj.DontMonitorInterfaces = strings.TrimSpace(strings.TrimPrefix(n, "monitor-changes")) == "off"
+				}
 				if strings.Contains(n, "//") {
 					showError("config: comments are not allowed after arguments")
 				}
@@ -183,12 +191,12 @@ func initCallback(callback modules.CallbackInfo) {
 
 func completeCallback() {
 	for _, n := range allProxies {
-		o := pndp.NewProxy(n.Iface1, n.Iface2, pndp.ParseFilter(n.Filter), n.autosense)
+		o := pndp.NewProxy(n.Iface1, n.Iface2, pndp.ParseFilter(n.Filter), n.autosense, !n.DontMonitorInterfaces)
 		n.instance = o
 		o.Start()
 	}
 	for _, n := range allResponders {
-		o := pndp.NewResponder(n.Iface, pndp.ParseFilter(n.Filter), n.autosense)
+		o := pndp.NewResponder(n.Iface, pndp.ParseFilter(n.Filter), n.autosense, !n.DontMonitorInterfaces)
 		n.instance = o
 		o.Start()
 	}

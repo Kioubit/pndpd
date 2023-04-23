@@ -12,19 +12,21 @@ import (
 var GlobalDebug = false
 
 type ResponderObj struct {
-	stopChan  chan struct{}
-	stopWG    *sync.WaitGroup
-	iface     string
-	filter    []*net.IPNet
-	autosense string
+	stopChan          chan struct{}
+	stopWG            *sync.WaitGroup
+	iface             string
+	filter            []*net.IPNet
+	autosense         string
+	monitorInterfaces bool
 }
 type ProxyObj struct {
-	stopChan  chan struct{}
-	stopWG    *sync.WaitGroup
-	iface1    string
-	iface2    string
-	filter    []*net.IPNet
-	autosense string
+	stopChan          chan struct{}
+	stopWG            *sync.WaitGroup
+	iface1            string
+	iface2            string
+	filter            []*net.IPNet
+	autosense         string
+	monitorInterfaces bool
 }
 
 // NewResponder
@@ -37,7 +39,7 @@ type ProxyObj struct {
 // This works even if the IP addresses change frequently.
 //
 // Start() must be called on the object to actually start responding
-func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) *ResponderObj {
+func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string, monitorInterfaces bool) *ResponderObj {
 	if filter == nil && autosenseInterface == "" {
 		fmt.Println("WARNING: You should use a whitelist for the responder unless you really know what you are doing")
 	}
@@ -45,11 +47,12 @@ func NewResponder(iface string, filter []*net.IPNet, autosenseInterface string) 
 
 	var s sync.WaitGroup
 	return &ResponderObj{
-		stopChan:  make(chan struct{}),
-		stopWG:    &s,
-		iface:     iface,
-		filter:    filter,
-		autosense: autosenseInterface,
+		stopChan:          make(chan struct{}),
+		stopWG:            &s,
+		iface:             iface,
+		filter:            filter,
+		autosense:         autosenseInterface,
+		monitorInterfaces: monitorInterfaces,
 	}
 }
 func (obj *ResponderObj) Start() {
@@ -60,7 +63,7 @@ func (obj *ResponderObj) start() {
 
 	startInterfaceMon()
 
-	addInterfaceToMon(obj.iface, false)
+	addInterfaceToMon(obj.iface, obj.monitorInterfaces)
 	addInterfaceToMon(obj.autosense, true)
 
 	requests := make(chan *ndpRequest, 100)
@@ -101,18 +104,19 @@ func (obj *ResponderObj) Stop() bool {
 // This works even if the IP addresses change frequently.
 //
 // Start() must be called on the object to actually start proxying
-func NewProxy(iface1 string, iface2 string, filter []*net.IPNet, autosenseInterface string) *ProxyObj {
+func NewProxy(iface1 string, iface2 string, filter []*net.IPNet, autosenseInterface string, monitorInterfaces bool) *ProxyObj {
 
 	checkIsValidNetworkInterfaceFatal(iface1, iface2, autosenseInterface)
 
 	var s sync.WaitGroup
 	return &ProxyObj{
-		stopChan:  make(chan struct{}),
-		stopWG:    &s,
-		iface1:    iface1,
-		iface2:    iface2,
-		filter:    filter,
-		autosense: autosenseInterface,
+		stopChan:          make(chan struct{}),
+		stopWG:            &s,
+		iface1:            iface1,
+		iface2:            iface2,
+		filter:            filter,
+		autosense:         autosenseInterface,
+		monitorInterfaces: monitorInterfaces,
 	}
 }
 
@@ -126,8 +130,8 @@ func (obj *ProxyObj) start() {
 	}()
 
 	startInterfaceMon()
-	addInterfaceToMon(obj.iface1, false)
-	addInterfaceToMon(obj.iface2, false)
+	addInterfaceToMon(obj.iface1, obj.monitorInterfaces)
+	addInterfaceToMon(obj.iface2, obj.monitorInterfaces)
 	addInterfaceToMon(obj.autosense, true)
 
 	out_iface1_sol_questions_iface2_adv := make(chan *ndpQuestion, 100)

@@ -41,7 +41,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		showFatalError(err.Error())
 	}
 
-	var selectedSelfSourceIP []byte
+	var selectedSelfSourceIP = emptyIpv6
 
 	for {
 		var req *ndpRequest
@@ -82,7 +82,6 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		selectedSelfSourceIP = getInterfaceInfo(respondIface).sourceIP
 		// Auto-sense
 		if autoSense != "" {
-			selectedSelfSourceIP = getInterfaceInfo(autoiface).sourceIP
 			filter = getInterfaceInfo(autoiface).networks
 		}
 
