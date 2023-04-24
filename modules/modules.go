@@ -29,6 +29,7 @@ type CallbackInfo struct {
 	CallbackType CallbackType
 	Command      Command
 	Arguments    []string
+	Config       map[string][]string
 }
 
 func RegisterModule(name string, commands []Command, initCallback func(CallbackInfo), CompleteCallback func(), shutdownCallback func()) {

@@ -1,4 +1,4 @@
-# PNDPD - NDP Responder / Proxy (IPv6)
+# PNDPD - NDP Proxy / Responder (IPv6)
 ## Features
 - **Efficiently** process incoming packets using bpf (which runs in the kernel)
 - **Proxy** NDP between interfaces with an optional whitelist

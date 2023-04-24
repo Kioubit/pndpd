@@ -121,31 +121,21 @@ func initCallback(callback modules.CallbackInfo) {
 		switch callback.Command.CommandText {
 		case "proxy":
 			obj := configProxy{}
+			obj.Iface1 = getDefaultConfValue(callback.Config["ext-iface"])
+			obj.Iface2 = getDefaultConfValue(callback.Config["int-iface"])
+			obj.autosense = getDefaultConfValue(callback.Config["autosense"])
+			obj.DontMonitorInterfaces = getDefaultConfValue(callback.Config["monitor-changes"]) == "off"
+
 			filter := ""
-			for _, n := range callback.Arguments {
-				if strings.HasPrefix(n, "ext-iface") {
-					obj.Iface1 = strings.TrimSpace(strings.TrimPrefix(n, "ext-iface"))
+			for i := range callback.Config["filter"] {
+				value := callback.Config["filter"][i]
+				if strings.Contains(value, ";") {
+					showError("config: the use of semicolons is not allowed in the filter arguments")
 				}
-				if strings.HasPrefix(n, "int-iface") {
-					obj.Iface2 = strings.TrimSpace(strings.TrimPrefix(n, "int-iface"))
-				}
-				if strings.HasPrefix(n, "filter") {
-					filter += strings.TrimSpace(strings.TrimPrefix(n, "filter")) + ";"
-					if strings.Contains(n, ";") {
-						showError("config: the use of semicolons is not allowed in the filter arguments")
-					}
-				}
-				if strings.HasPrefix(n, "autosense") {
-					obj.autosense = strings.TrimSpace(strings.TrimPrefix(n, "autosense"))
-				}
-				if strings.HasPrefix(n, "monitor-changes") {
-					obj.DontMonitorInterfaces = strings.TrimSpace(strings.TrimPrefix(n, "monitor-changes")) == "off"
-				}
-				if strings.Contains(n, "//") {
-					showError("config: comments are not allowed after arguments")
-				}
+				filter += value + ";"
 			}
 			obj.Filter = strings.TrimSuffix(filter, ";")
+
 			if obj.autosense != "" && obj.Filter != "" {
 				showError("config: cannot have both a filter and autosense enabled on a proxy object")
 			}
@@ -155,38 +145,38 @@ func initCallback(callback modules.CallbackInfo) {
 			allProxies = append(allProxies, &obj)
 		case "responder":
 			obj := configResponder{}
+			obj.Iface = getDefaultConfValue(callback.Config["iface"])
+			obj.autosense = getDefaultConfValue(callback.Config["autosense"])
+			obj.DontMonitorInterfaces = getDefaultConfValue(callback.Config["monitor-changes"]) == "off"
 			filter := ""
-			for _, n := range callback.Arguments {
-				if strings.HasPrefix(n, "iface") {
-					obj.Iface = strings.TrimSpace(strings.TrimPrefix(n, "iface"))
+			for i := range callback.Config["filter"] {
+				value := callback.Config["filter"][i]
+				if strings.Contains(value, ";") {
+					showError("config: the use of semicolons is not allowed in the filter arguments")
 				}
-				if strings.HasPrefix(n, "filter") {
-					filter += strings.TrimSpace(strings.TrimPrefix(n, "filter")) + ";"
-					if strings.Contains(n, ";") {
-						showError("config: the use of semicolons is not allowed in the filter arguments")
-					}
-				}
-				if strings.HasPrefix(n, "autosense") {
-					obj.autosense = strings.TrimSpace(strings.TrimPrefix(n, "autosense"))
-				}
-				if obj.autosense != "" && obj.Filter != "" {
-					showError("config: cannot have both a filter and autosense enabled on a responder object")
-				}
-				if obj.Iface == "" {
-					showError("config: interface not specified in the responder object. (iface parameter)")
-				}
-				if strings.HasPrefix(n, "monitor-changes") {
-					obj.DontMonitorInterfaces = strings.TrimSpace(strings.TrimPrefix(n, "monitor-changes")) == "off"
-				}
-				if strings.Contains(n, "//") {
-					showError("config: comments are not allowed after arguments")
-				}
+				filter += value + ";"
 			}
 			obj.Filter = strings.TrimSuffix(filter, ";")
-			allResponders = append(allResponders, &obj)
 
+			if obj.autosense != "" && obj.Filter != "" {
+				showError("config: cannot have both a filter and autosense enabled on a responder object")
+			}
+			if obj.Iface == "" {
+				showError("config: interface not specified in the responder object. (iface parameter)")
+			}
+			allResponders = append(allResponders, &obj)
 		}
 	}
+}
+
+func getDefaultConfValue(in []string) string {
+	if in == nil {
+		return ""
+	}
+	if len(in) == 0 {
+		return ""
+	}
+	return in[0]
 }
 
 func completeCallback() {
@@ -201,6 +191,7 @@ func completeCallback() {
 		o.Start()
 	}
 }
+
 func shutdownCallback() {
 	for _, n := range allProxies {
 		n.instance.Stop()
