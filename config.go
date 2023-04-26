@@ -81,14 +81,14 @@ func readConfig(dest string) {
 	}
 	_ = file.Close()
 
+	if err := scanner.Err(); err != nil {
+		configFatalError(err, "")
+	}
+
 	if modules.ExistsBlockingModule() {
 		modules.ExecuteComplete()
 		waitForSignal()
 		modules.ShutdownAll()
-	}
-
-	if err := scanner.Err(); err != nil {
-		configFatalError(err, "")
 	}
 }
 

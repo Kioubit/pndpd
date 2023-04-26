@@ -162,6 +162,8 @@ func checkPacketChecksum(v6 *ipv6Header, payload []byte) bool {
 	} else {
 		if GlobalDebug {
 			fmt.Println("Received packet checksum validation failed")
+			fmt.Printf("Failed checksum: packet payload: %x\n", payload)
+			fmt.Printf("Failed checksum: packet header : %x - %x - %d\n", v6.srcIP, v6.dstIP, v6.payloadLen)
 		}
 		return false
 	}

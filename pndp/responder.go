@@ -64,18 +64,18 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			}
 		}
 
-		if linkLocalSpace.Contains(req.answeringForIP) {
-			if GlobalDebug {
-				fmt.Println("Dropping packet asking for a link-local IP")
-			}
-			continue
-		}
-
 		v6Header, err := newIpv6Header(req.srcIP, req.dstIP)
 		if err != nil {
 			continue
 		}
 		if !checkPacketChecksum(v6Header, req.payload) {
+			continue
+		}
+
+		if linkLocalSpace.Contains(req.answeringForIP) {
+			if GlobalDebug {
+				fmt.Println("Dropping packet asking for a link-local IP")
+			}
 			continue
 		}
 
