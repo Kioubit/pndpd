@@ -23,6 +23,11 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	if err != nil {
 		showFatalError(err.Error())
 	}
+
+	if len([]byte(iface)) > syscall.IFNAMSIZ-1 {
+		showFatalError("Interface size larger then maximum allowed by the kernel")
+	}
+
 	tiface := &syscall.SockaddrLinklayer{
 		Protocol: htons16(syscall.ETH_P_IPV6),
 		Ifindex:  niface.Index,
@@ -40,10 +45,6 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	}()
 	if GlobalDebug {
 		fmt.Println("Obtained fd ", fd)
-	}
-
-	if len([]byte(iface)) > syscall.IFNAMSIZ {
-		showFatalError("Interface size larger then maximum allowed by the kernel")
 	}
 
 	err = syscall.Bind(fd, tiface)
@@ -139,7 +140,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			srcIP:          buf[22:38],
 			dstIP:          buf[38:54],
 			answeringForIP: buf[62:78],
-			payload:        buf[54:],
+			payload:        buf[54:numRead],
 			sourceIface:    iface,
 		}
 	}
