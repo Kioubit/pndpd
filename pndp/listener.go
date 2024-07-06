@@ -2,9 +2,11 @@ package pndp
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"golang.org/x/net/bpf"
+	"log/slog"
 	"net"
+	"os"
 	"sync"
 	"syscall"
 )
@@ -24,30 +26,16 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		showFatalError(err.Error())
 	}
 
-	if len([]byte(iface)) > syscall.IFNAMSIZ-1 {
-		showFatalError("Interface size larger then maximum allowed by the kernel")
+	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW|syscall.SOCK_CLOEXEC, htons(syscall.ETH_P_IPV6))
+	if err != nil {
+		showFatalError("Failed setting up listener on interface", iface)
 	}
 
-	tiface := &syscall.SockaddrLinklayer{
+	slog.Debug("Obtained fd", "fd", fd)
+	err = syscall.Bind(fd, &syscall.SockaddrLinklayer{
 		Protocol: htons16(syscall.ETH_P_IPV6),
 		Ifindex:  niface.Index,
-	}
-
-	fd, err := syscall.Socket(syscall.AF_PACKET, syscall.SOCK_RAW, htons(syscall.ETH_P_IPV6))
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	go func() {
-		<-stopChan
-		setPromisc(fd, iface, false, false)
-		_ = syscall.Close(fd)
-		stopWG.Done() // syscall.read does not release when the file descriptor is closed
-	}()
-	if GlobalDebug {
-		fmt.Println("Obtained fd ", fd)
-	}
-
-	err = syscall.Bind(fd, tiface)
+	})
 	if err != nil {
 		showFatalError(err.Error())
 	}
@@ -87,50 +75,49 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 		showFatalError(err.Error())
 	}
 
+	err = syscall.SetNonblock(fd, true)
+	if err != nil {
+		slog.Warn("Failed setting nonblock", "fd", fd)
+	}
+
+	fdN := os.NewFile(uintptr(fd), "")
+	go func() {
+		<-stopChan
+		_ = fdN.Close()
+	}()
+
 	for {
 		buf := make([]byte, 86)
-		numRead, err := syscall.Read(fd, buf)
+		numRead, err := fdN.Read(buf)
 		if err != nil {
+			if errors.Is(err, os.ErrClosed) {
+				return
+			}
 			showFatalError(err.Error())
 		}
-		if numRead < 78 {
-			if GlobalDebug {
-				fmt.Println("Dropping packet since it does not meet the minimum length requirement")
-				fmt.Printf("% X\n", buf[:numRead])
-			}
-			continue
-		}
-		if GlobalDebug {
-			fmt.Println("Got packet on", iface, "of type", requestType)
-			fmt.Printf("% X\n", buf[:numRead])
 
-			fmt.Println("Source mac on ethernet layer:")
-			fmt.Printf("% X\n", buf[6:12])
-			fmt.Println("Source IP:")
-			fmt.Printf("% X\n", buf[22:38])
-			fmt.Println("Destination IP:")
-			fmt.Printf("% X\n", buf[38:54])
-			fmt.Println("Requested IP:")
-			fmt.Printf("% X\n", buf[62:78])
-			if requestType == ndp_ADV {
-				fmt.Println("NDP Flags")
-				fmt.Printf("% X\n", buf[58])
-			}
-			fmt.Println()
+		pLogger := slog.Default().With("packet", hexValue{buf[:numRead]})
+
+		if numRead < 78 {
+			pLogger.Debug("Dropping packet since it does not meet the minimum length requirement")
+			continue
 		}
 
 		if bytes.Equal(buf[6:12], niface.HardwareAddr) {
-			if GlobalDebug {
-				fmt.Println("Dropping packet from ourselves")
-			}
+			pLogger.Debug("Dropping packet from ourselves")
 			continue
 		}
 
+		pLogger.Debug("Got packet", "interface", iface, "type", requestType,
+			"source mac (ethernet layer)", hexValue{buf[6:12]},
+			"source IP", hexValue{buf[22:38]},
+			"destination IP", hexValue{buf[38:54]},
+			"requested IP", hexValue{buf[62:78]},
+		)
+
 		if requestType == ndp_ADV {
 			if buf[58] == 0x0 {
-				if GlobalDebug {
-					fmt.Println("Dropping Advertisement packet without any NDP flags set")
-				}
+				pLogger.Debug("Dropping advertisement packet without any NDP flags set")
 				continue
 			}
 		}
@@ -143,5 +130,6 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			payload:        buf[54:numRead],
 			sourceIface:    iface,
 		}
+
 	}
 }

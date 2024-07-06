@@ -30,8 +30,7 @@ func readConfig(dest string) {
 
 		if after, found := strings.CutPrefix(line, "debug"); found {
 			if strings.TrimSpace(after) == "on" {
-				pndp.GlobalDebug = true
-				fmt.Println("DEBUG ON")
+				pndp.EnableDebugLog()
 			}
 			continue
 		}

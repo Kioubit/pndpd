@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
+	"log/slog"
 	"net/netip"
 )
 
@@ -160,11 +160,10 @@ func checkPacketChecksum(v6 *ipv6Header, payload []byte) bool {
 	if bytes.Equal(packetsum, bChecksum) {
 		return true
 	} else {
-		if GlobalDebug {
-			fmt.Println("Received packet checksum validation failed")
-			fmt.Printf("Failed checksum: packet payload: %x\n", payload)
-			fmt.Printf("Failed checksum: packet header : %x - %x\n", v6.srcIP, v6.dstIP)
-		}
+		slog.Debug("Received packet checksum validation failed", "payload", hexValue{payload},
+			"v6SrcIP", hexValue{v6.srcIP},
+			"v6DstIP", hexValue{v6.dstIP},
+		)
 		return false
 	}
 }

@@ -2,7 +2,7 @@ package pndp
 
 import (
 	"bytes"
-	"fmt"
+	"log/slog"
 	"net"
 	"sync"
 	"syscall"
@@ -24,7 +24,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 	var ndpQuestionsList = make([]*ndpQuestion, 0, 40)
 	var _, linkLocalSpace, _ = net.ParseCIDR("fe80::/10")
 
-	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW, syscall.IPPROTO_RAW)
+	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW|syscall.SOCK_CLOEXEC, syscall.IPPROTO_RAW)
 	if err != nil {
 		showFatalError(err.Error())
 	}
@@ -73,9 +73,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		}
 
 		if linkLocalSpace.Contains(req.answeringForIP) {
-			if GlobalDebug {
-				fmt.Println("Dropping packet asking for a link-local IP")
-			}
+			slog.Debug("Dropping packet asking for a link-local IP")
 			continue
 		}
 
@@ -89,9 +87,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			ok := false
 			for _, i := range filter {
 				if i.Contains(req.answeringForIP) {
-					if GlobalDebug {
-						fmt.Println("Responded for whitelisted IP", req.answeringForIP)
-					}
+					slog.Debug("Responding for whitelisted IP", "ip", req.answeringForIP)
 					ok = true
 					break
 				}
@@ -101,21 +97,16 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			}
 		}
 
-		if GlobalDebug {
-			fmt.Println("Getting ready to send packet of type", respondType, "out on interface", iface)
-		}
-
 		if req.sourceIface == iface {
-			pkt(fd, selectedSelfSourceIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
+			slog.Debug("Sending packet", "type", respondType, "dest", hexValue{req.dstIP}, "interface", respondIface.Name)
+			sendNDPPacket(fd, selectedSelfSourceIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
 			if respondType == ndp_ADV {
 				if !bytes.Equal(req.dstIP, allNodesMulticastIPv6) { // Skip in case of unsolicited advertisement
 					success := false
 					req.dstIP, success = getAddressFromQuestionListRetry(req.answeringForIP, ndpQuestionChan, ndpQuestionsList)
 					if !success {
-						if GlobalDebug {
-							fmt.Println("Nobody has asked for this IP")
-						}
+						slog.Debug("Nobody has asked for this IP", req.answeringForIP)
 						continue
 					}
 				}
@@ -130,22 +121,23 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 					}
 				}
 			}
-			pkt(fd, selectedSelfSourceIP, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
+			slog.Debug("Sending packet", "type", respondType, "dest", hexValue{req.dstIP}, "interface", respondIface.Name)
+			sendNDPPacket(fd, selectedSelfSourceIP, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		}
 	}
 }
 
-func pkt(fd int, ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondType ndpType) {
+func sendNDPPacket(fd int, ownIP []byte, dstIP []byte, ndpTargetIP []byte, ndpTargetMac []byte, ndpType ndpType) {
 	v6, err := newIpv6Header(ownIP, dstIP)
 	if err != nil {
 		return
 	}
-	NDPa, err := newNdpPacket(tgtip, mac, respondType)
+	NDPa, err := newNdpPacket(ndpTargetIP, ndpTargetMac, ndpType)
 	if err != nil {
 		return
 	}
 	v6.addPayload(NDPa)
-	response := v6.constructPacket()
+	packet := v6.constructPacket()
 
 	var t [16]byte
 	copy(t[:], dstIP)
@@ -154,13 +146,9 @@ func pkt(fd int, ownIP []byte, dstIP []byte, tgtip []byte, mac []byte, respondTy
 		Port: 0,
 		Addr: t,
 	}
-	if GlobalDebug {
-		fmt.Println("Sending packet of type", respondType, "to")
-		fmt.Printf("% X\n", t)
-	}
-	err = syscall.Sendto(fd, response, 0, &d)
+	err = syscall.Sendto(fd, packet, 0, &d)
 	if err != nil {
-		fmt.Println(err.Error())
+		slog.Error("Error sending packet", err)
 	}
 }
 

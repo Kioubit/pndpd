@@ -6,7 +6,6 @@ import (
 	"os/signal"
 	"pndpd/modules"
 	"syscall"
-
 	// Modules
 	_ "pndpd/modules/example"
 	_ "pndpd/modules/userInterface"
@@ -63,5 +62,6 @@ func waitForSignal() {
 	var sigCh = make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	<-sigCh
+	signal.Stop(sigCh)
 	close(sigCh)
 }
