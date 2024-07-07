@@ -31,10 +31,13 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 	defer func(fd int) {
 		_ = syscall.Close(fd)
 	}(fd)
+	slog.Debug("Obtained fd", "fd", fd)
+
 	err = syscall.BindToDevice(fd, iface)
 	if err != nil {
 		showFatalError(err.Error())
 	}
+	slog.Debug("Bound to interface", "fd", fd, "interface", iface)
 
 	respondIface, err := net.InterfaceByName(iface)
 	if err != nil {
@@ -87,7 +90,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			ok := false
 			for _, i := range filter {
 				if i.Contains(req.answeringForIP) {
-					slog.Debug("Responding for whitelisted IP", "ip", req.answeringForIP)
+					slog.Debug("Responding for whitelisted IP", "ip", ipValue{req.answeringForIP})
 					ok = true
 					break
 				}
@@ -98,7 +101,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		}
 
 		if req.sourceIface == iface {
-			slog.Debug("Sending packet", "type", respondType, "dest", hexValue{req.dstIP}, "interface", respondIface.Name)
+			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
 			sendNDPPacket(fd, selectedSelfSourceIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
 			if respondType == ndp_ADV {
@@ -106,7 +109,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 					success := false
 					req.dstIP, success = getAddressFromQuestionListRetry(req.answeringForIP, ndpQuestionChan, ndpQuestionsList)
 					if !success {
-						slog.Debug("Nobody has asked for this IP", req.answeringForIP)
+						slog.Debug("Nobody has asked for this IP", "ip", ipValue{req.answeringForIP})
 						continue
 					}
 				}
@@ -121,7 +124,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 					}
 				}
 			}
-			slog.Debug("Sending packet", "type", respondType, "dest", hexValue{req.dstIP}, "interface", respondIface.Name)
+			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
 			sendNDPPacket(fd, selectedSelfSourceIP, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		}
 	}

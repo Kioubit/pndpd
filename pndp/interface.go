@@ -49,7 +49,7 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 		}
 
 		var ifl iflags
-		copy(ifl.name[:], []byte(iface))
+		copy(ifl.name[:], iface)
 		_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tFD), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
 		if ep != 0 {
 			showFatalError(ep.Error())

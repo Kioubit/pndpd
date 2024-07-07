@@ -11,12 +11,6 @@ import (
 	"syscall"
 )
 
-// Htons Convert a uint16 to host byte order (big endian)
-func htons(v uint16) int {
-	return int((v << 8) | (v >> 8))
-}
-func htons16(v uint16) uint16 { return v<<8 | v>>8 }
-
 func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopWG *sync.WaitGroup, stopChan chan struct{}) {
 	stopWG.Add(1)
 	defer stopWG.Done()
@@ -39,6 +33,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	if err != nil {
 		showFatalError(err.Error())
 	}
+	slog.Debug("Bound to interface", "fd", fd, "interface", iface)
 
 	setPromisc(fd, iface, true, false)
 
@@ -108,19 +103,19 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			continue
 		}
 
-		pLogger.Debug("Got packet", "interface", iface, "type", requestType,
-			"source mac (ethernet layer)", hexValue{buf[6:12]},
-			"source IP", hexValue{buf[22:38]},
-			"destination IP", hexValue{buf[38:54]},
-			"requested IP", hexValue{buf[62:78]},
-		)
-
 		if requestType == ndp_ADV {
 			if buf[58] == 0x0 {
 				pLogger.Debug("Dropping advertisement packet without any NDP flags set")
 				continue
 			}
 		}
+
+		pLogger.Debug("Got packet", "interface", iface, "type", requestType,
+			"source MAC", macValue{buf[6:12]},
+			"source IP", ipValue{buf[22:38]},
+			"destination IP", ipValue{buf[38:54]},
+			"requested IP", ipValue{buf[62:78]},
+		)
 
 		responder <- &ndpRequest{
 			requestType:    requestType,
@@ -130,6 +125,5 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			payload:        buf[54:numRead],
 			sourceIface:    iface,
 		}
-
 	}
 }

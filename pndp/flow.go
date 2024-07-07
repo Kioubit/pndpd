@@ -2,25 +2,12 @@ package pndp
 
 import (
 	"fmt"
-	"log/slog"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
 )
-
-func EnableDebugLog() {
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})))
-}
-
-type hexValue struct {
-	arg []byte
-}
-
-func (v hexValue) LogValue() slog.Value {
-	return slog.StringValue(fmt.Sprintf("%X", v.arg))
-}
 
 type ResponderObj struct {
 	stopChan          chan struct{}
