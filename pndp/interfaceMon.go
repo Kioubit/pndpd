@@ -60,13 +60,14 @@ func getUpdates() {
 			continue
 		}
 
-		srcIP := selectSourceIP(iface)
+		srcIP, srcIPUla := selectSourceIP(iface)
 		monMutex.Lock()
 
 		for i := range monInterfaceList {
 			if monInterfaceList[i].iface.Name == iface.Name {
 				oldMonIface := monInterfaceList[i]
 				oldMonIface.sourceIP = srcIP
+				oldMonIface.sourceIPULA = srcIPUla
 				if oldMonIface.autosense {
 					oldMonIface.networks = getInterfaceNetworkList(iface)
 				}
@@ -78,11 +79,12 @@ func getUpdates() {
 }
 
 type monInterface struct {
-	addCount  int
-	sourceIP  []byte //TODO ULA
-	networks  []*net.IPNet
-	iface     *net.Interface
-	autosense bool
+	addCount    int
+	sourceIP    []byte
+	sourceIPULA []byte
+	networks    []*net.IPNet
+	iface       *net.Interface
+	autosense   bool
 }
 
 var (
@@ -100,6 +102,7 @@ func addInterfaceToMon(iface string, autosense bool) {
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
 		showFatalError(err.Error())
+		return
 	}
 
 	for i := range monInterfaceList {
@@ -117,7 +120,7 @@ func addInterfaceToMon(iface string, autosense bool) {
 		autosense: autosense,
 		iface:     niface,
 	}
-	newMonIface.sourceIP = selectSourceIP(niface)
+	newMonIface.sourceIP, newMonIface.sourceIPULA = selectSourceIP(niface)
 	newMonIface.networks = getInterfaceNetworkList(niface)
 
 	monInterfaceList = append(monInterfaceList, newMonIface)
@@ -132,6 +135,7 @@ func removeInterfaceFromMon(iface string) {
 	niface, err := net.InterfaceByName(iface)
 	if err != nil {
 		showFatalError(err.Error())
+		return
 	}
 	for i := range monInterfaceList {
 		if monInterfaceList[i].iface.Name == niface.Name {

@@ -74,6 +74,7 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 	iFace, err := net.InterfaceByName(iface)
 	if err != nil {
 		showFatalError(err.Error())
+		return
 	}
 
 	mReq := unix.PacketMreq{
@@ -95,34 +96,44 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 	// ---------------------------------------------------------------------
 }
 
-func selectSourceIP(iface *net.Interface) []byte {
-	var _, ulaSpace, _ = net.ParseCIDR("fc00::/7")
-	var result = emptyIpv6
-	ifaceaddrs, err := iface.Addrs()
+func selectSourceIP(iface *net.Interface) (gua []byte, ula []byte) {
+	gua = emptyIpv6
+	ula = emptyIpv6
+	interfaceAddresses, err := iface.Addrs()
 	if err != nil {
-		return result
+		return gua, ula
 	}
 
-	for _, n := range ifaceaddrs {
-		tip, _, err := net.ParseCIDR(n.String())
+	var haveUla = false
+	var haveGua = false
+	for _, n := range interfaceAddresses {
+		if haveGua && haveUla {
+			break
+		}
+		testIP, _, err := net.ParseCIDR(n.String())
 		if err != nil {
 			break
 		}
-		var haveUla = false
-		if isIpv6(tip.String()) {
-			if tip.IsGlobalUnicast() {
-				haveUla = true
-				result = tip
-
-				if !ulaSpace.Contains(tip) {
-					break
+		if isIpv6(testIP.String()) {
+			if testIP.IsGlobalUnicast() {
+				if !ulaSpace.Contains(testIP) {
+					haveGua = true
+					gua = testIP
+				} else {
+					haveUla = true
+					ula = testIP
 				}
-			} else if tip.IsLinkLocalUnicast() && !haveUla {
-				result = tip
+			} else if testIP.IsLinkLocalUnicast() {
+				if !haveUla {
+					ula = testIP
+				}
+				if !haveGua {
+					gua = testIP
+				}
 			}
 		}
 	}
-	return result
+	return gua, ula
 }
 
 func getInterfaceNetworkList(iface *net.Interface) []*net.IPNet {

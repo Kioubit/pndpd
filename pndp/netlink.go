@@ -42,7 +42,7 @@ func newNetlinkSocket(protocol int, multicastGroups ...uint) (*netlinkSocket, er
 	socket.lsa.Family = unix.AF_NETLINK
 
 	for _, g := range multicastGroups {
-		socket.lsa.Groups |= (1 << (g - 1))
+		socket.lsa.Groups |= 1 << (g - 1)
 	}
 
 	err = unix.Bind(fd, &socket.lsa)

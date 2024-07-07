@@ -13,6 +13,7 @@ ip netns exec pndpd-i sysctl -w net.ipv6.conf.all.forwarding=1
 # Provider bridge
 ip -netns pndpd-p link add br0 type bridge
 ip -netns pndpd-p addr add fd00::/62 dev br0
+ip -netns pndpd-p addr add 2001:db8::/62 dev br0
 ip -netns pndpd-p link set dev br0 address 00:00:00:00:00:01 # Predictable link-local
 ip -netns pndpd-p link set up dev br0
 
@@ -23,12 +24,14 @@ ip -netns pndpd-p link set veth-c0 master br0
 
 ip -netns pndpd-p link set veth-p netns pndpd-c
 ip -netns pndpd-c addr add fd00:0:0:1::/128 dev veth-p
+ip -netns pndpd-c addr add 2001:db8:0:1::/128 dev veth-p
 ip -netns pndpd-c link set up dev veth-p
 ip -netns pndpd-c route add default via fe80::200:ff:fe00:1 dev veth-p
 
 # Bridge on client 0
 ip -netns pndpd-c link add br0 type bridge
 ip -netns pndpd-c addr add fd00:0:0:1::/64 dev br0
+ip -netns pndpd-c addr add 2001:db8:0:1::/64 dev br0
 ip -netns pndpd-c link set dev br0 address 00:00:00:00:00:02
 ip -netns pndpd-c link set up dev br0
 
@@ -39,6 +42,7 @@ ip -netns pndpd-c link set veth-i0 master br0
 
 ip -netns pndpd-c link set veth-c netns pndpd-i
 ip -netns pndpd-i addr add fd00:0:0:1::100/64 dev veth-c
+ip -netns pndpd-i addr add 2001:db8:0:1::100/64 dev veth-c
 ip -netns pndpd-i link set up dev veth-c
 ip -netns pndpd-i route add default via fd00:0:0:1:: dev veth-c
 
@@ -49,6 +53,7 @@ sleep 2
 
 # Perform tests
 ip netns exec pndpd-p ping -c 5 -w 10 fd00:0:0:1::100
+ip netns exec pndpd-p ping -c 5 -w 10 2001:db8:0:1::100
 
 kill -n 2 "$PID"
 wait

@@ -3,6 +3,7 @@ package pndp
 import (
 	"fmt"
 	"log/slog"
+	"net"
 	"net/netip"
 	"os"
 )
@@ -44,3 +45,5 @@ func (v macValue) LogValue() slog.Value {
 // Htons Convert a uint16 to host byte order (big endian)
 func htons(v uint16) int      { return int(htons16(v)) }
 func htons16(v uint16) uint16 { return (v << 8) | (v >> 8) }
+
+var _, ulaSpace, _ = net.ParseCIDR("fc00::/7")

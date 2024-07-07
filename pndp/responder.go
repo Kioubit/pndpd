@@ -44,8 +44,6 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		showFatalError(err.Error())
 	}
 
-	var selectedSelfSourceIP = emptyIpv6
-
 	for {
 		var req *ndpRequest
 		if (ndpQuestionChan == nil && respondType == ndp_ADV) || (ndpQuestionChan != nil && respondType == ndp_SOL) {
@@ -80,7 +78,6 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			continue
 		}
 
-		selectedSelfSourceIP = getInterfaceInfo(respondIface).sourceIP
 		// Auto-sense
 		if autoSense != "" {
 			filter = getInterfaceInfo(autoiface).networks
@@ -100,9 +97,17 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			}
 		}
 
+		intInfo := getInterfaceInfo(respondIface)
+		var selectedSelfSourceIPGua = intInfo.sourceIP
+		var selectedSelfSourceIPUla = intInfo.sourceIPULA
+		var selectedSelfSourceIP = selectedSelfSourceIPGua
+		if ulaSpace.Contains(req.answeringForIP) {
+			selectedSelfSourceIP = selectedSelfSourceIPUla
+		}
+
 		if req.sourceIface == iface {
 			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
-			sendNDPPacket(fd, selectedSelfSourceIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
+			sendNDPPacket(fd, req.dstIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
 			if respondType == ndp_ADV {
 				if !bytes.Equal(req.dstIP, allNodesMulticastIPv6) { // Skip in case of unsolicited advertisement
@@ -125,6 +130,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 				}
 			}
 			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
+
 			sendNDPPacket(fd, selectedSelfSourceIP, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		}
 	}
@@ -145,11 +151,9 @@ func sendNDPPacket(fd int, ownIP []byte, dstIP []byte, ndpTargetIP []byte, ndpTa
 	var t [16]byte
 	copy(t[:], dstIP)
 
-	d := syscall.SockaddrInet6{
-		Port: 0,
+	err = syscall.Sendto(fd, packet, 0, &syscall.SockaddrInet6{
 		Addr: t,
-	}
-	err = syscall.Sendto(fd, packet, 0, &d)
+	})
 	if err != nil {
 		slog.Error("Error sending packet", err)
 	}
