@@ -38,15 +38,14 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	setPromisc(fd, iface, true, false)
 
 	var protocolNo uint32
-	if requestType == ndp_SOL {
+	if requestType == ndpSol {
 		//Neighbor Solicitation
 		protocolNo = 0x87
 	} else {
 		//Neighbor Advertisement
 		protocolNo = 0x88
 	}
-	var f bpfFilter
-	f = []bpf.Instruction{
+	var f bpfFilter = []bpf.Instruction{
 		// Load "EtherType" field from the ethernet header.
 		bpf.LoadAbsolute{Off: 12, Size: 2},
 		// Jump to the drop packet instruction if EtherType is not IPv6.
@@ -103,7 +102,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 			continue
 		}
 
-		if requestType == ndp_ADV {
+		if requestType == ndpAdv {
 			if buf[58] == 0x0 {
 				pLogger.Debug("Dropping advertisement packet without any NDP flags set")
 				continue

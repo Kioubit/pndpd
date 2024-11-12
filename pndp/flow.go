@@ -69,8 +69,8 @@ func (obj *ResponderObj) start() {
 		close(requests)
 		obj.stopWG.Done()
 	}()
-	go respond(obj.iface, requests, ndp_ADV, nil, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
-	go listen(obj.iface, requests, ndp_SOL, obj.stopWG, obj.stopChan)
+	go respond(obj.iface, requests, ndpAdv, nil, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
+	go listen(obj.iface, requests, ndpSol, obj.stopWG, obj.stopChan)
 	fmt.Printf("Started responder instance on interface %s", obj.iface)
 	fmt.Println()
 	<-obj.stopChan
@@ -132,30 +132,30 @@ func (obj *ProxyObj) start() {
 	addInterfaceToMon(obj.iface2, obj.monitorInterfaces)
 	addInterfaceToMon(obj.autosense, true)
 
-	out_iface1_sol_questions_iface2_adv := make(chan *ndpQuestion, 100)
+	out_iface1_sol_questions_iface2_adv := make(chan ndpQuestion, 100)
 	defer close(out_iface1_sol_questions_iface2_adv)
-	out_iface2_sol_questions_iface1_adv := make(chan *ndpQuestion, 100)
+	out_iface2_sol_questions_iface1_adv := make(chan ndpQuestion, 100)
 	defer close(out_iface2_sol_questions_iface1_adv)
 
 	req_iface1_sol_iface2 := make(chan *ndpRequest, 100)
 	defer close(req_iface1_sol_iface2)
-	go listen(obj.iface1, req_iface1_sol_iface2, ndp_SOL, obj.stopWG, obj.stopChan)
-	go respond(obj.iface2, req_iface1_sol_iface2, ndp_SOL, out_iface2_sol_questions_iface1_adv, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
+	go listen(obj.iface1, req_iface1_sol_iface2, ndpSol, obj.stopWG, obj.stopChan)
+	go respond(obj.iface2, req_iface1_sol_iface2, ndpSol, out_iface2_sol_questions_iface1_adv, obj.filter, obj.autosense, obj.stopWG, obj.stopChan)
 
 	req_iface2_sol_iface1 := make(chan *ndpRequest, 100)
 	defer close(req_iface2_sol_iface1)
-	go listen(obj.iface2, req_iface2_sol_iface1, ndp_SOL, obj.stopWG, obj.stopChan)
-	go respond(obj.iface1, req_iface2_sol_iface1, ndp_SOL, out_iface1_sol_questions_iface2_adv, nil, "", obj.stopWG, obj.stopChan)
+	go listen(obj.iface2, req_iface2_sol_iface1, ndpSol, obj.stopWG, obj.stopChan)
+	go respond(obj.iface1, req_iface2_sol_iface1, ndpSol, out_iface1_sol_questions_iface2_adv, nil, "", obj.stopWG, obj.stopChan)
 
 	req_iface1_adv_iface2 := make(chan *ndpRequest, 100)
 	defer close(req_iface1_adv_iface2)
-	go listen(obj.iface1, req_iface1_adv_iface2, ndp_ADV, obj.stopWG, obj.stopChan)
-	go respond(obj.iface2, req_iface1_adv_iface2, ndp_ADV, out_iface1_sol_questions_iface2_adv, nil, "", obj.stopWG, obj.stopChan)
+	go listen(obj.iface1, req_iface1_adv_iface2, ndpAdv, obj.stopWG, obj.stopChan)
+	go respond(obj.iface2, req_iface1_adv_iface2, ndpAdv, out_iface1_sol_questions_iface2_adv, nil, "", obj.stopWG, obj.stopChan)
 
 	req_iface2_adv_iface1 := make(chan *ndpRequest, 100)
 	defer close(req_iface2_adv_iface1)
-	go listen(obj.iface2, req_iface2_adv_iface1, ndp_ADV, obj.stopWG, obj.stopChan)
-	go respond(obj.iface1, req_iface2_adv_iface1, ndp_ADV, out_iface2_sol_questions_iface1_adv, nil, "", obj.stopWG, obj.stopChan)
+	go listen(obj.iface2, req_iface2_adv_iface1, ndpAdv, obj.stopWG, obj.stopChan)
+	go respond(obj.iface1, req_iface2_adv_iface1, ndpAdv, out_iface2_sol_questions_iface1_adv, nil, "", obj.stopWG, obj.stopChan)
 
 	fmt.Printf("Started Proxy instance on interfaces %s and %s (if enabled, the whitelist is applied on %s)", obj.iface1, obj.iface2, obj.iface2)
 	fmt.Println()
@@ -231,9 +231,9 @@ func checkIsValidNetworkInterfaceFatal(iface ...string) {
 }
 
 func showFatalError(error ...string) {
-	fmt.Printf("Error: ")
+	fmt.Print("Error: ")
 	for _, err := range error {
-		fmt.Printf(err + " ")
+		fmt.Print(err + " ")
 	}
 	fmt.Println()
 	fmt.Println("Exiting due to error")

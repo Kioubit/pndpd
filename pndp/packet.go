@@ -84,7 +84,7 @@ func (p *ndpPayload) constructPacket() ([]byte, int) {
 	var protocol byte
 	var flags byte
 	var linkType byte
-	if p.packetType == ndp_SOL {
+	if p.packetType == ndpSol {
 		protocol = 0x87
 		flags = 0x0
 		linkType = 0x01
@@ -116,7 +116,7 @@ func (p *ndpPayload) constructPacket() ([]byte, int) {
 }
 
 func calculateChecksum(h *ipv6Header, payload []byte) uint16 {
-	if payload == nil || len(payload) == 0 {
+	if len(payload) == 0 {
 		return 0x0000
 	}
 

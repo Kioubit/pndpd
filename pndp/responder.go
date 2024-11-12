@@ -8,7 +8,7 @@ import (
 	"syscall"
 )
 
-func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQuestionChan chan *ndpQuestion, filter []*net.IPNet, autoSense string, stopWG *sync.WaitGroup, stopChan chan struct{}) {
+func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQuestionChan chan ndpQuestion, filter []*net.IPNet, autoSense string, stopWG *sync.WaitGroup, stopChan chan struct{}) {
 	stopWG.Add(1)
 	defer stopWG.Done()
 
@@ -21,7 +21,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 		}
 	}
 
-	var ndpQuestionsList = make([]*ndpQuestion, 0, 40)
+	var ndpQuestionsList = make([]ndpQuestion, 0, 40)
 	var _, linkLocalSpace, _ = net.ParseCIDR("fe80::/10")
 
 	fd, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_RAW|syscall.SOCK_CLOEXEC, syscall.IPPROTO_RAW)
@@ -46,7 +46,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 
 	for {
 		var req *ndpRequest
-		if (ndpQuestionChan == nil && respondType == ndp_ADV) || (ndpQuestionChan != nil && respondType == ndp_SOL) {
+		if (ndpQuestionChan == nil && respondType == ndpAdv) || (ndpQuestionChan != nil && respondType == ndpSol) {
 			select {
 			case <-stopChan:
 				return
@@ -109,10 +109,10 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
 			sendNDPPacket(fd, req.dstIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
-			if respondType == ndp_ADV {
+			if respondType == ndpAdv {
 				if !bytes.Equal(req.dstIP, allNodesMulticastIPv6) { // Skip in case of unsolicited advertisement
 					success := false
-					req.dstIP, success = getAddressFromQuestionListRetry(req.answeringForIP, ndpQuestionChan, ndpQuestionsList)
+					req.dstIP, success = getAddressFromQuestionList(req.answeringForIP, &ndpQuestionsList)
 					if !success {
 						slog.Debug("Nobody has asked for this IP", "ip", ipValue{req.answeringForIP})
 						continue
@@ -123,7 +123,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 					// Duplicate Address detection is in progress
 					selectedSelfSourceIP = emptyIpv6
 				} else {
-					ndpQuestionChan <- &ndpQuestion{
+					ndpQuestionChan <- ndpQuestion{
 						targetIP: req.answeringForIP,
 						askedBy:  req.srcIP,
 					}
@@ -155,53 +155,26 @@ func sendNDPPacket(fd int, ownIP []byte, dstIP []byte, ndpTargetIP []byte, ndpTa
 		Addr: t,
 	})
 	if err != nil {
-		slog.Error("Error sending packet", err)
+		slog.Error("Error sending packet", "error", err)
 	}
 }
 
-func getAddressFromQuestionListRetry(targetIP []byte, ndpQuestionChan chan *ndpQuestion, ndpQuestionsList []*ndpQuestion) ([]byte, bool) {
-	success := false
-	var result []byte
-	result, success = getAddressFromQuestionList(targetIP, ndpQuestionsList)
-	if success {
-		return result, true
-	}
-
-	gotBuffered := false
-	select {
-	case q := <-ndpQuestionChan:
-		ndpQuestionsList = append(ndpQuestionsList, q)
-		gotBuffered = true
-	default:
-	}
-
-	if gotBuffered {
-		result, success = getAddressFromQuestionList(targetIP, ndpQuestionsList)
-	}
-
-	return nil, false
-}
-
-func getAddressFromQuestionList(targetIP []byte, ndpQuestionsList []*ndpQuestion) ([]byte, bool) {
-	for i := range ndpQuestionsList {
-		if bytes.Equal((*ndpQuestionsList[i]).targetIP, targetIP) {
-			result := (*ndpQuestionsList[i]).askedBy
-			ndpQuestionsList = removeFromQuestionList(ndpQuestionsList, i)
+func getAddressFromQuestionList(targetIP []byte, ndpQuestionsList *[]ndpQuestion) ([]byte, bool) {
+	for i := range *ndpQuestionsList {
+		if bytes.Equal((*ndpQuestionsList)[i].targetIP, targetIP) {
+			result := (*ndpQuestionsList)[i].askedBy
+			*ndpQuestionsList = removeFromQuestionList(*ndpQuestionsList, i)
 			return result, true
 		}
 	}
 	return nil, false
 }
-func removeFromQuestionList(s []*ndpQuestion, i int) []*ndpQuestion {
-	/*
-		More efficient but order has some importance as otherwise newer entries might get removed via cleanupQuestionList()
-		s[i] = s[len(s)-1]
-		return s[:len(s)-1]
-	*/
+func removeFromQuestionList(s []ndpQuestion, i int) []ndpQuestion {
+	// Remove while keeping the order
 	return append(s[:i], s[i+1:]...)
 }
 
-func cleanupQuestionList(s []*ndpQuestion) []*ndpQuestion {
+func cleanupQuestionList(s []ndpQuestion) []ndpQuestion {
 	toRemove := len(s) - 40
 	if toRemove <= 0 {
 		return s

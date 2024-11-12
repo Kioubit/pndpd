@@ -30,7 +30,7 @@ func TestCalculateChecksum(t *testing.T) {
 	for _, tc := range cases {
 		payloadBytes, err := hex.DecodeString(strings.Join(strings.Fields(tc.payloadHexString), ""))
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("%s", err)
 		}
 
 		bPayloadLen := make([]byte, 2)
@@ -71,7 +71,7 @@ func TestCheckPacketChecksum(t *testing.T) {
 	for _, tc := range cases {
 		payloadBytes, err := hex.DecodeString(strings.Join(strings.Fields(tc.payloadHexString), ""))
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("%s", err)
 		}
 		got := checkPacketChecksum(testHeader, payloadBytes)
 		if tc.want != got {

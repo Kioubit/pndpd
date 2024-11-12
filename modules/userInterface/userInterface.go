@@ -1,5 +1,4 @@
 //go:build !noUserInterface
-// +build !noUserInterface
 
 package userInterface
 

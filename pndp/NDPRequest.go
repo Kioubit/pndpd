@@ -3,8 +3,8 @@ package pndp
 type ndpType int
 
 const (
-	ndp_ADV ndpType = 0
-	ndp_SOL ndpType = 1
+	ndpAdv ndpType = 0
+	ndpSol ndpType = 1
 )
 
 type ndpRequest struct {
