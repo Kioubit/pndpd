@@ -1,0 +1,20 @@
+name: Custom integration test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Run custom script with root access
+        run: |
+          sudo chmod +x ./pndpd_test.sh
+          sudo ./pndpd_test.sh
+        continue-on-error: false
