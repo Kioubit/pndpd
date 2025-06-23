@@ -97,18 +97,20 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			}
 		}
 
-		intInfo := getInterfaceInfo(respondIface)
-		var selectedSelfSourceIPGua = intInfo.sourceIP
-		var selectedSelfSourceIPUla = intInfo.sourceIPULA
-		var selectedSelfSourceIP = selectedSelfSourceIPGua
-		if ulaSpace.Contains(req.answeringForIP) {
-			selectedSelfSourceIP = selectedSelfSourceIPUla
-		}
-
 		if req.sourceIface == iface {
 			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
-			sendNDPPacket(fd, req.dstIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
+			sendNDPPacket(fd, req.answeringForIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
+			// An address from the interface needs to be used instead of the one from the packet as the kernel
+			// makes unsolicited NDP advertisements on its own for connected hosts
+			intInfo := getInterfaceInfo(respondIface)
+			var selectedSelfSourceIPGua = intInfo.sourceIP
+			var selectedSelfSourceIPUla = intInfo.sourceIPULA
+			var selectedSelfSourceIP = selectedSelfSourceIPGua
+			if ulaSpace.Contains(req.answeringForIP) {
+				selectedSelfSourceIP = selectedSelfSourceIPUla
+			}
+
 			if respondType == ndpAdv {
 				if !bytes.Equal(req.dstIP, allNodesMulticastIPv6) { // Skip in case of unsolicited advertisement
 					success := false
@@ -129,8 +131,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 					}
 				}
 			}
-			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
-
+			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name, "targetIP", ipValue{req.answeringForIP}, "srcIP", ipValue{selectedSelfSourceIP}, "ndpTargetMac", macValue{respondIface.HardwareAddr})
 			sendNDPPacket(fd, selectedSelfSourceIP, req.dstIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		}
 	}
@@ -148,13 +149,9 @@ func sendNDPPacket(fd int, ownIP []byte, dstIP []byte, ndpTargetIP []byte, ndpTa
 	v6.addPayload(NDPa)
 	packet := v6.constructPacket()
 
-	var t [16]byte
-	copy(t[:], dstIP)
-
-	err = syscall.Sendto(fd, packet, 0, &syscall.SockaddrInet6{
-		Addr: t,
-	})
-	if err != nil {
+	if err := syscall.Sendto(fd, packet, 0, &syscall.SockaddrInet6{
+		Addr: [16]byte(dstIP),
+	}); err != nil {
 		slog.Error("Error sending packet", "error", err)
 	}
 }
