@@ -56,7 +56,7 @@ case "$1" in
     pndpd_command="ip netns exec pndpd-c bin/pndpd proxy veth-p br0 auto"
     ;;
   "responder")
-    pndpd_command="ip netns exec pndpd-c bin/pndpd responder veth-p auto"
+    pndpd_command="ip netns exec pndpd-c bin/pndpd responder veth-p"
     ;;
   *)
     echo "Error: Invalid mode specified: '$1'.  Choose 'proxy' or 'responder'."
@@ -118,14 +118,15 @@ ip -netns pndpd-i link set dev veth-c address 00:00:00:00:03:02
 ip -netns pndpd-i link set up dev veth-c
 ip -netns pndpd-i route add default via fd00:0:0:1:: dev veth-c
 
-function teardown {
+teardown() {
   echo "Performing teardown..."
-  if [[ -n "$PID" ]]; then
-    kill -n 2 "$PID" || echo "Error stopping program"
+  if [ -n "$PID" ]; then
+    kill -INT "$PID" || { echo "Error stopping program"; exit 1; }
   fi
 
-  if [[ -n "$PIDCAPTURE" ]]; then
-      kill -n 2 "$PIDCAPTURE" || echo "Error stopping program"
+
+  if [ -n "$PIDCAPTURE" ]; then
+      kill -INT "$PIDCAPTURE" || { echo "Error stopping program"; exit 1; }
   fi
 
   wait

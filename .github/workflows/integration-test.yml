@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
 
 jobs:
   run-script:
@@ -11,10 +12,12 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Run custom script with root access
+      - name: Run integration testing script as root
+        working-directory: ${{ github.workspace }}
         run: |
-          sudo chmod +x ./pndpd_test.sh
-          sudo ./pndpd_test.sh
+          sudo chmod +x ./pndp_test.sh
+          sudo ./pndp_test.sh proxy
+          sudo ./pndp_test.sh responder
         continue-on-error: false
