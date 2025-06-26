@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"log/slog"
-	"net/netip"
+	"net"
 )
 
 var emptyIpv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
@@ -161,17 +161,13 @@ func checkPacketChecksum(v6 *ipv6Header, payload []byte) bool {
 		return true
 	} else {
 		slog.Debug("Received packet checksum validation failed", "payload", hexValue{payload},
-			"v6SrcIP", hexValue{v6.srcIP},
-			"v6DstIP", hexValue{v6.dstIP},
+			"v6SrcIP", ipValue{v6.srcIP},
+			"v6DstIP", ipValue{v6.dstIP},
 		)
 		return false
 	}
 }
 
-func isIpv6(ip string) bool {
-	testIp, err := netip.ParseAddr(ip)
-	if err != nil {
-		return false
-	}
-	return testIp.Is6()
+func isIpv6(n *net.IPNet) bool {
+	return n.IP.To4() == nil
 }

@@ -34,43 +34,7 @@ func (filter bpfFilter) ApplyTo(fd int) (err error) {
 	return nil
 }
 
-type iflags struct {
-	name  [syscall.IFNAMSIZ]byte
-	flags uint16
-}
-
-func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
-
-	// -------------------------- Interface flags --------------------------
-	if withInterfaceFlags {
-		tFD, err := syscall.Socket(syscall.AF_INET6, syscall.SOCK_DGRAM, 0)
-		if err != nil {
-			showFatalError(err.Error())
-		}
-
-		var ifl iflags
-		copy(ifl.name[:], iface)
-		_, _, ep := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tFD), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
-		if ep != 0 {
-			showFatalError(ep.Error())
-		}
-
-		if enable {
-			ifl.flags |= uint16(syscall.IFF_PROMISC)
-		} else {
-			ifl.flags &^= uint16(syscall.IFF_PROMISC)
-		}
-
-		_, _, ep = syscall.Syscall(syscall.SYS_IOCTL, uintptr(tFD), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifl)))
-		if ep != 0 {
-			showFatalError(ep.Error())
-		}
-
-		_ = syscall.Close(tFD)
-	}
-	// ---------------------------------------------------------------------
-
-	// -------------------------- Socket Options ---------------------------
+func setPromisc(fd int, iface string, enable bool) {
 	iFace, err := net.InterfaceByName(iface)
 	if err != nil {
 		showFatalError(err.Error())
@@ -93,7 +57,6 @@ func setPromisc(fd int, iface string, enable bool, withInterfaceFlags bool) {
 	if err != nil {
 		showFatalError(err.Error())
 	}
-	// ---------------------------------------------------------------------
 }
 
 func selectSourceIP(iface *net.Interface) (gua []byte, ula []byte) {
@@ -106,15 +69,18 @@ func selectSourceIP(iface *net.Interface) (gua []byte, ula []byte) {
 
 	var haveUla = false
 	var haveGua = false
-	for _, n := range interfaceAddresses {
+	for _, l := range interfaceAddresses {
 		if haveGua && haveUla {
 			break
 		}
-		testIP, _, err := net.ParseCIDR(n.String())
-		if err != nil {
-			break
+
+		ipNet, ok := l.(*net.IPNet)
+		if !ok {
+			continue
 		}
-		if isIpv6(testIP.String()) {
+		testIP := ipNet.IP
+
+		if isIpv6(ipNet) {
 			if testIP.IsGlobalUnicast() {
 				if !ulaSpace.Contains(testIP) {
 					haveGua = true
@@ -143,12 +109,13 @@ func getInterfaceNetworkList(iface *net.Interface) []*net.IPNet {
 		return filter
 	}
 	for _, l := range autoifaceaddrs {
-		testIP, anet, err := net.ParseCIDR(l.String())
-		if err != nil {
-			break
+		ipNet, ok := l.(*net.IPNet)
+		if !ok {
+			continue
 		}
-		if isIpv6(testIP.String()) {
-			filter = append(filter, anet)
+
+		if isIpv6(ipNet) {
+			filter = append(filter, ipNet)
 		}
 	}
 	return filter

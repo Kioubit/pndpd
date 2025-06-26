@@ -101,8 +101,7 @@ func respond(iface string, requests chan *ndpRequest, respondType ndpType, ndpQu
 			slog.Debug("Sending packet", "type", respondType, "dest", ipValue{req.dstIP}, "interface", respondIface.Name)
 			sendNDPPacket(fd, req.answeringForIP, req.srcIP, req.answeringForIP, respondIface.HardwareAddr, respondType)
 		} else {
-			// An address from the interface needs to be used instead of the one from the packet as the kernel
-			// makes unsolicited NDP advertisements on its own for connected hosts
+			// An address from the interface needs to be used instead of the one from the packet
 			intInfo := getInterfaceInfo(respondIface)
 			var selectedSelfSourceIPGua = intInfo.sourceIP
 			var selectedSelfSourceIPUla = intInfo.sourceIPULA

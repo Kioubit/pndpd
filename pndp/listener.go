@@ -35,7 +35,7 @@ func listen(iface string, responder chan *ndpRequest, requestType ndpType, stopW
 	}
 	slog.Debug("Bound to interface", "fd", fd, "interface", iface)
 
-	setPromisc(fd, iface, true, false)
+	setPromisc(fd, iface, true)
 
 	var protocolNo uint32
 	if requestType == ndpSol {

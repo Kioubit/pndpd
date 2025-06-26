@@ -19,15 +19,9 @@ func init() {
 		CommandLineEnabled: true,
 	}, {
 		CommandText:        "responder",
-		Description:        "pndpd responder <external interface> <[optional] 'auto' to determine filters from the internal interface or whitelist of CIDRs separated by a semicolon>",
+		Description:        "pndpd responder <external interface> <[optional] 'auto' to determine filters from the interface or whitelist of CIDRs separated by a semicolon>",
 		BlockTerminate:     true,
 		ConfigEnabled:      true,
-		CommandLineEnabled: true,
-	}, {
-		CommandText:        "modules",
-		Description:        "pndpd modules available - list available modules",
-		BlockTerminate:     false,
-		ConfigEnabled:      false,
 		CommandLineEnabled: true,
 	}}
 	modules.RegisterModule("Core", commands, initCallback, completeCallback, shutdownCallback)
@@ -105,15 +99,6 @@ func initCallback(callback modules.CallbackInfo) {
 					instance:  nil,
 				})
 			}
-		case "modules":
-			if modules.ModuleList != nil {
-				fmt.Print("Available Modules: ")
-				for i := range modules.ModuleList {
-					fmt.Print((*modules.ModuleList[i]).Name + " ")
-				}
-				fmt.Println()
-			}
-
 		}
 
 	} else {

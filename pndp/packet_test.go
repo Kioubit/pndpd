@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
+	"net"
 	"strings"
 	"testing"
 )
@@ -83,14 +84,15 @@ func TestCheckPacketChecksum(t *testing.T) {
 
 func TestIsIpv6(t *testing.T) {
 	type testCase struct {
-		ip   string
+		ip   *net.IPNet
 		want bool
 	}
 	cases := []testCase{
-		{"0.0.0.0", false},
-		{"fd", false},
-		{"fd::", true},
-		{"fd00::", true},
+		{mustParseNetIP("0.0.0.0/0"), false},
+		{mustParseNetIP("172.20.0.15/24"), false},
+		{mustParseNetIP("fd::/42"), true},
+		{mustParseNetIP("fd::/128"), true},
+		{mustParseNetIP("fd00::/64"), true},
 	}
 
 	for _, tc := range cases {
@@ -99,4 +101,9 @@ func TestIsIpv6(t *testing.T) {
 		}
 	}
 
+}
+
+func mustParseNetIP(cidr string) *net.IPNet {
+	_, result, _ := net.ParseCIDR(cidr)
+	return result
 }
