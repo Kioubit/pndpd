@@ -90,7 +90,7 @@ func (p *ndpPayload) constructPacket() ([]byte, int) {
 		linkType = 0x01
 	} else {
 		protocol = 0x88
-		flags = 0x60
+		flags = 0xe0 // (Router, Solicited, Override)
 		linkType = 0x02
 	}
 	header := []byte{
@@ -98,7 +98,7 @@ func (p *ndpPayload) constructPacket() ([]byte, int) {
 		0x0,      // Code
 		0x0,      // Checksum filled in later
 		0x0,      // Checksum filled in later
-		flags,    // Flags (Solicited,Override)
+		flags,    // Flags
 		0x0,      // Reserved
 		0x0,      // Reserved
 		0x0,      // Reserved
